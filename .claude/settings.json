@@ -7,7 +7,9 @@
       "Bash(pnpm db:seed)",
       "Bash(pnpm run *)",
       "Bash(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(32\\).toString\\('base64'\\)\\)\")",
-      "Bash(pnpm db:migrate)"
+      "Bash(pnpm db:migrate)",
+      "Read(//c/Users/mgsay/OneDrive/Desktop/Software/ development/HOA/frontend/lib/**)",
+      "Read(//c/Users/mgsay/**)"
     ]
   }
 }

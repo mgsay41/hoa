@@ -41,6 +41,15 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  if (pathname.startsWith("/admin") && !pathname.startsWith("/admin/login")) {
+    const sessionCookie =
+      request.cookies.get("better-auth.session_token") ||
+      request.cookies.get("__Secure-better-auth.session_token");
+    if (!sessionCookie) {
+      return NextResponse.redirect(new URL("/admin/login", request.url));
+    }
+  }
+
   const response = NextResponse.next();
 
   if (pathname.startsWith("/admin") && !pathname.startsWith("/admin/login")) {
