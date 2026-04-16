@@ -11,8 +11,18 @@ const ibmPlexArabic = IBM_Plex_Sans_Arabic({
 });
 
 export const metadata: Metadata = {
-  title: "اتحاد ملاك برج الوليد",
-  description: "نظام إدارة مالية اتحاد ملاك برج الوليد",
+  title: {
+    default: "اتحاد ملاك برج الوليد — لوحة التحكم المالية",
+    template: "%s | اتحاد ملاك برج الوليد",
+  },
+  description: "نظام إدارة مالية اتحاد ملاك برج الوليد — تقارير مالية شفافة وتحليلات مفصلة",
+  openGraph: {
+    title: "اتحاد ملاك برج الوليد",
+    description: "لوحة التحكم المالية — إيرادات ومصروفات وتقارير",
+    locale: "ar_SA",
+    type: "website",
+    siteName: "اتحاد ملاك برج الوليد",
+  },
 };
 
 export default function RootLayout({

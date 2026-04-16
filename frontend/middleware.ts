@@ -1,0 +1,55 @@
+import { NextRequest, NextResponse } from "next/server";
+
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const WINDOW_MS = 60_000;
+const MAX_REQUESTS = 30;
+
+function getClientIp(request: NextRequest): string {
+  const xff = request.headers.get("x-forwarded-for");
+  if (xff) return xff.split(",")[0].trim();
+  return "unknown";
+}
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+
+  if (!entry || now > entry.resetTime) {
+    rateLimitMap.set(ip, { count: 1, resetTime: now + WINDOW_MS });
+    return false;
+  }
+
+  entry.count++;
+  return entry.count > MAX_REQUESTS;
+}
+
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  const isAdminApi =
+    pathname.startsWith("/api/transactions") && request.method === "POST" ||
+    pathname.startsWith("/api/recurring") && (request.method === "POST" || request.method === "PATCH") ||
+    pathname.startsWith("/api/upload");
+
+  if (isAdminApi) {
+    const ip = getClientIp(request);
+    if (isRateLimited(ip)) {
+      return NextResponse.json(
+        { error: "طلبات كثيرة جداً — يرجى الانتظار قليلاً" },
+        { status: 429 }
+      );
+    }
+  }
+
+  const response = NextResponse.next();
+
+  if (pathname.startsWith("/admin") && !pathname.startsWith("/admin/login")) {
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
+
+  return response;
+}
+
+export const config = {
+  matcher: ["/api/:path*", "/admin/:path*"],
+};

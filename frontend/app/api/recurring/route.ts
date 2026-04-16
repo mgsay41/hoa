@@ -96,3 +96,24 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export async function PUT() {
+  return NextResponse.json(
+    { error: "التعديل غير مسموح — البنود المتكررة غير قابلة للتغيير بعد الإنشاء" },
+    { status: 405 }
+  );
+}
+
+export async function PATCH() {
+  return NextResponse.json(
+    { error: "استخدم مسار التبديل /recurring/[id]/toggle لتفعيل/تعطيل البند" },
+    { status: 405 }
+  );
+}
+
+export async function DELETE() {
+  return NextResponse.json(
+    { error: "الحذف غير مسموح — البنود المتكررة غير قابلة للحذف" },
+    { status: 405 }
+  );
+}

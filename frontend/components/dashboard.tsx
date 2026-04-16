@@ -14,6 +14,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import Link from "next/link";
 import { formatAmount, formatDate, arabicMonths } from "@/lib/utils";
 
 type Summary = {
@@ -73,9 +74,9 @@ export function Dashboard() {
       case "month":
         return { month: currentMonth.toString(), year: currentYear.toString() };
       case "3months": {
-        const m3 = new Date(now);
-        m3.setMonth(m3.getMonth() - 2);
-        return { year: currentYear.toString() };
+        const start = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        return { startDate: start.toISOString(), endDate: end.toISOString() };
       }
       case "year":
         return { year: currentYear.toString() };
@@ -84,9 +85,9 @@ export function Dashboard() {
 
   const fetchSummary = useCallback(async () => {
     const params = getPeriodParams();
-    const sp = new URLSearchParams();
-    if (params.month) sp.set("month", params.month);
-    if (params.year) sp.set("year", params.year);
+    const sp = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== undefined) as [string, string][]
+    );
     const res = await fetch(`/api/transactions/summary?${sp}`);
     if (res.ok) {
       const data = await res.json();
@@ -104,9 +105,9 @@ export function Dashboard() {
 
   const fetchCategories = useCallback(async () => {
     const params = getPeriodParams();
-    const sp = new URLSearchParams();
-    if (params.month) sp.set("month", params.month);
-    if (params.year) sp.set("year", params.year);
+    const sp = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== undefined) as [string, string][]
+    );
     sp.set("type", "EXPENSE");
     const res = await fetch(`/api/analytics/categories?${sp}`);
     if (res.ok) {
@@ -154,20 +155,33 @@ export function Dashboard() {
     <div>
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <h1 className="text-2xl font-bold">لوحة التحكم المالية</h1>
-        <div className="flex gap-1 bg-surface rounded-xl p-1 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
-          {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                period === p
-                  ? "bg-primary text-white"
-                  : "text-text-secondary hover:text-text-primary"
-              }`}
-            >
-              {PERIOD_LABELS[p]}
-            </button>
-          ))}
+        <div className="flex items-center gap-3">
+          <Link
+            href="/reports"
+            className="inline-flex items-center gap-2 px-4 py-2 border border-primary text-primary rounded-xl text-sm font-medium hover:bg-primary-light transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            تحميل التقرير
+          </Link>
+          <div className="flex gap-1 bg-surface rounded-xl p-1 shadow-[0_1px_4px_rgba(0,0,0,0.06)]">
+            {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  period === p
+                    ? "bg-primary text-white"
+                    : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                {PERIOD_LABELS[p]}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

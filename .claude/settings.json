@@ -5,7 +5,9 @@
       "Bash(pnpm exec *)",
       "Bash(pnpm build *)",
       "Bash(pnpm db:seed)",
-      "Bash(pnpm run *)"
+      "Bash(pnpm run *)",
+      "Bash(node -e \"console.log\\(require\\('crypto'\\).randomBytes\\(32\\).toString\\('base64'\\)\\)\")",
+      "Bash(pnpm db:migrate)"
     ]
   }
 }

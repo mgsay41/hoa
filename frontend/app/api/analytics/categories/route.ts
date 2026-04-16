@@ -6,12 +6,16 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const monthParam = searchParams.get("month");
     const yearParam = searchParams.get("year");
+    const startDateParam = searchParams.get("startDate");
+    const endDateParam = searchParams.get("endDate");
     const typeParam = searchParams.get("type") as "INCOME" | "EXPENSE" | null;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {};
 
-    if (monthParam && yearParam) {
+    if (startDateParam && endDateParam) {
+      where.date = { gte: new Date(startDateParam), lt: new Date(endDateParam) };
+    } else if (monthParam && yearParam) {
       const m = parseInt(monthParam);
       const y = parseInt(yearParam);
       where.date = { gte: new Date(y, m - 1, 1), lt: new Date(y, m, 1) };
