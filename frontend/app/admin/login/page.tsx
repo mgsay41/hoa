@@ -16,7 +16,7 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const { error: signInError } = await signIn.email({ email, password });
+    const { error: signInError } = await signIn.email({ email, password, rememberMe: true });
     if (signInError) {
       setError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
       setLoading(false);

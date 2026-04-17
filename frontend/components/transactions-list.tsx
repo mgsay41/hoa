@@ -58,6 +58,7 @@ export function TransactionsList({ categories }: TransactionsListProps) {
     categoryId: "",
   });
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   const fetchTransactions = useCallback(
     async (page = 1) => {
@@ -294,17 +295,27 @@ export function TransactionsList({ categories }: TransactionsListProps) {
                             <span className="text-text-secondary">{tx.notes}</span>
                           </div>
                         )}
-                        {tx.attachmentUrl && (
-                          <a
-                            href={tx.attachmentUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                        {tx.attachmentUrl && tx.attachmentType === "IMAGE" && (
+                          <button
+                            onClick={() => setLightboxUrl(tx.attachmentUrl)}
                             className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
                           >
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                               <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
                             </svg>
                             عرض المرفق
+                          </button>
+                        )}
+                        {tx.attachmentUrl && tx.attachmentType === "PDF" && (
+                          <a
+                            href={tx.attachmentUrl}
+                            download
+                            className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                            تحميل المرفق
                           </a>
                         )}
                         {!tx.notes && !tx.attachmentUrl && (
@@ -343,6 +354,27 @@ export function TransactionsList({ categories }: TransactionsListProps) {
           </>
         )}
       </div>
+
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <div className="relative max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setLightboxUrl(null)}
+              className="absolute -top-8 right-0 text-white/80 hover:text-white text-sm"
+            >
+              ✕ إغلاق
+            </button>
+            <img
+              src={lightboxUrl}
+              alt="المرفق"
+              className="w-full max-h-[80vh] object-contain rounded-lg"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
