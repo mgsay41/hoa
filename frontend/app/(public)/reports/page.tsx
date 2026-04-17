@@ -192,9 +192,11 @@ export default function ReportsPage() {
 
       <div
         style={{
-          position: "absolute",
+          position: "fixed",
+          top: "-9999px",
           left: "-9999px",
-          top: 0,
+          pointerEvents: "none",
+          zIndex: -1,
         }}
       >
         {!loading && data && (
