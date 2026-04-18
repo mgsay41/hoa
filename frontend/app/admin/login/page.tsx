@@ -39,8 +39,8 @@ export default function AdminLoginPage() {
               <polyline points="9 22 9 12 15 12 15 22" />
             </svg>
           </div>
-          <h1 className="text-lg font-bold text-text-primary">برج الوليد</h1>
-          <p className="text-sm text-text-muted mt-1">لوحة إدارة الاتحاد</p>
+          <h1 className="text-lg font-bold text-text-primary">اطعام</h1>
+          <p className="text-sm text-text-muted mt-1">لوحة إدارة الجمعية الخيرية</p>
         </div>
 
         {/* Card */}

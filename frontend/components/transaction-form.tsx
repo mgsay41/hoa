@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useToast } from "@/components/toast";
 import { paymentMethodLabels } from "@/lib/utils";
 
@@ -13,21 +15,37 @@ type Category = {
 
 interface TransactionFormProps {
   categories: Category[];
+  mode?: "create" | "edit";
+  initialData?: {
+    id: string;
+    type: "INCOME" | "EXPENSE";
+    amount: string;
+    date: string;
+    descriptionAr: string;
+    categoryId: string;
+    paymentMethod: string;
+    notes: string | null;
+    attachmentUrl: string | null;
+    attachmentType: string | null;
+  };
 }
 
 const fieldClass =
   "w-full px-4 py-3 rounded-xl bg-bg border border-border text-text-primary placeholder:text-text-muted text-sm focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none transition";
 
-export function TransactionForm({ categories }: TransactionFormProps) {
+export function TransactionForm({ categories, mode = "create", initialData }: TransactionFormProps) {
   const { toast } = useToast();
-  const [type, setType] = useState<"INCOME" | "EXPENSE">("EXPENSE");
-  const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
-  const [categoryId, setCategoryId] = useState("");
-  const [descriptionAr, setDescriptionAr] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("CASH");
-  const [notes, setNotes] = useState("");
+  const router = useRouter();
+  const [type, setType] = useState<"INCOME" | "EXPENSE">(initialData?.type ?? "EXPENSE");
+  const [amount, setAmount] = useState(initialData?.amount ?? "");
+  const [date, setDate] = useState(() => initialData?.date ?? new Date().toISOString().split("T")[0]);
+  const [categoryId, setCategoryId] = useState(initialData?.categoryId ?? "");
+  const [descriptionAr, setDescriptionAr] = useState(initialData?.descriptionAr ?? "");
+  const [paymentMethod, setPaymentMethod] = useState(initialData?.paymentMethod ?? "CASH");
+  const [notes, setNotes] = useState(initialData?.notes ?? "");
   const [file, setFile] = useState<File | null>(null);
+  const [existingAttachmentUrl, setExistingAttachmentUrl] = useState<string | null>(initialData?.attachmentUrl ?? null);
+  const [existingAttachmentType] = useState<string | null>(initialData?.attachmentType ?? null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const filteredCategories = categories.filter((c) => c.type === type);
@@ -62,26 +80,50 @@ export function TransactionForm({ categories }: TransactionFormProps) {
         attachmentType = uploadData.type;
       }
 
-      const res = await fetch("/api/transactions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      if (mode === "edit" && initialData) {
+        const body: Record<string, unknown> = {
           type, amount, date, descriptionAr, categoryId, paymentMethod,
-          notes: notes || undefined, attachmentUrl, attachmentType,
-        }),
-      });
+          notes: notes || undefined,
+        };
+        if (file) {
+          body.attachmentUrl = attachmentUrl;
+          body.attachmentType = attachmentType;
+        }
+        const res = await fetch(`/api/transactions/${initialData.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          toast(data.error || "حدث خطأ أثناء تحديث المعاملة", "error");
+          setIsSubmitting(false);
+          return;
+        }
+        toast("تم تحديث المعاملة بنجاح");
+        router.push("/admin/transactions");
+      } else {
+        const res = await fetch("/api/transactions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type, amount, date, descriptionAr, categoryId, paymentMethod,
+            notes: notes || undefined,
+            attachmentUrl: file ? attachmentUrl : undefined,
+            attachmentType: file ? attachmentType : undefined,
+          }),
+        });
 
-      if (!res.ok) {
-        const data = await res.json();
-        toast(data.error || "حدث خطأ أثناء إضافة المعاملة", "error");
-        setIsSubmitting(false);
-        return;
+        if (!res.ok) {
+          const data = await res.json();
+          toast(data.error || "حدث خطأ أثناء إضافة المعاملة", "error");
+          setIsSubmitting(false);
+          return;
+        }
+
+        toast("تمت إضافة المعاملة بنجاح");
+        router.push("/transactions");
       }
-
-      toast("تمت إضافة المعاملة بنجاح");
-      setAmount(""); setDescriptionAr(""); setNotes(""); setFile(null);
-      setCategoryId(""); setPaymentMethod("CASH");
-      setDate(new Date().toISOString().split("T")[0]);
     } catch {
       toast("حدث خطأ غير متوقع", "error");
     } finally {
@@ -92,8 +134,12 @@ export function TransactionForm({ categories }: TransactionFormProps) {
   return (
     <div className="max-w-2xl mx-auto fade-in">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-text-primary">إضافة معاملة جديدة</h1>
-        <p className="text-sm text-text-muted mt-1">أدخل تفاصيل المعاملة المالية</p>
+        <h1 className="text-xl font-bold text-text-primary">
+          {mode === "edit" ? "تعديل المعاملة" : "إضافة معاملة جديدة"}
+        </h1>
+        <p className="text-sm text-text-muted mt-1">
+          {mode === "edit" ? "عدّل تفاصيل المعاملة المالية" : "أدخل تفاصيل المعاملة المالية"}
+        </p>
       </div>
 
       <div className="bg-surface border border-border rounded-2xl p-5 sm:p-6">
@@ -231,6 +277,23 @@ export function TransactionForm({ categories }: TransactionFormProps) {
               المرفقات
               <span className="normal-case font-normal text-text-muted mr-1">(اختياري)</span>
             </label>
+            {mode === "edit" && existingAttachmentUrl && !file && (
+              <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-bg border border-border mb-3">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="text-text-muted shrink-0">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                </svg>
+                <span className="text-sm text-text-secondary flex-1 truncate">
+                  مرفق حالي ({existingAttachmentType === "PDF" ? "PDF" : "صورة"})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setExistingAttachmentUrl(null)}
+                  className="shrink-0 text-expense text-xs hover:text-expense/70 transition-colors"
+                >
+                  حذف المرفق
+                </button>
+              </div>
+            )}
             <label className={`flex items-center gap-3 px-4 py-3 rounded-xl bg-bg border border-dashed border-border cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-colors ${file ? "border-primary/40 bg-primary/5" : ""}`}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="text-text-muted shrink-0">
                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
@@ -274,6 +337,15 @@ export function TransactionForm({ categories }: TransactionFormProps) {
             />
           </div>
 
+          {mode === "edit" && (
+            <Link
+              href="/admin/transactions"
+              className="w-full py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 mt-1 flex items-center justify-center gap-2 bg-surface-elevated border border-border text-text-secondary hover:bg-surface hover:border-border-light"
+            >
+              إلغاء
+            </Link>
+          )}
+
           <button
             type="submit"
             disabled={isSubmitting}
@@ -288,15 +360,27 @@ export function TransactionForm({ categories }: TransactionFormProps) {
                 <svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                 </svg>
-                جارٍ الإضافة...
+                {mode === "edit" ? "جارٍ التحديث..." : "جارٍ الإضافة..."}
               </>
             ) : (
               <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <line x1="12" y1="5" x2="12" y2="19" />
-                  <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-                إضافة المعاملة
+                {mode === "edit" ? (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                    </svg>
+                    حفظ التعديلات
+                  </>
+                ) : (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <line x1="12" y1="5" x2="12" y2="19" />
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                    </svg>
+                    إضافة المعاملة
+                  </>
+                )}
               </>
             )}
           </button>

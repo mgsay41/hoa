@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useToast } from "@/components/toast";
 
 type Category = {
@@ -19,6 +20,7 @@ const fieldClass =
 
 export function RecurringForm({ categories }: RecurringFormProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const [type, setType] = useState<"INCOME" | "EXPENSE">("EXPENSE");
   const [nameAr, setNameAr] = useState("");
   const [amount, setAmount] = useState("");
@@ -61,9 +63,7 @@ export function RecurringForm({ categories }: RecurringFormProps) {
         return;
       }
       toast("تمت إضافة البند المتكرر بنجاح");
-      setNameAr(""); setAmount(""); setCategoryId(""); setDayOfMonth("1");
-      setStartDate(new Date().toISOString().split("T")[0]);
-      setEndDate(""); setNotes("");
+      router.push("/admin/recurring");
     } catch {
       toast("حدث خطأ غير متوقع", "error");
     } finally {

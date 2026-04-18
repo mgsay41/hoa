@@ -23,12 +23,13 @@ function isRateLimited(ip: string): boolean {
   return entry.count > MAX_REQUESTS;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isAdminApi =
-    pathname.startsWith("/api/transactions") && request.method === "POST" ||
-    pathname.startsWith("/api/recurring") && (request.method === "POST" || request.method === "PATCH") ||
+    (pathname.startsWith("/api/transactions") && (request.method === "POST" || request.method === "PUT" || request.method === "DELETE")) ||
+    (pathname.startsWith("/api/recurring") && (request.method === "POST" || request.method === "PATCH")) ||
+    (pathname.startsWith("/api/categories") && (request.method === "POST" || request.method === "PUT" || request.method === "DELETE")) ||
     pathname.startsWith("/api/upload");
 
   if (isAdminApi) {

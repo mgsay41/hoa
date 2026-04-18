@@ -41,7 +41,7 @@ export default function AdminLayout({
           </button>
 
           <span className="text-sm font-bold text-text-primary">
-            برج <span className="text-primary">الوليد</span>
+            <span className="text-primary">اطعام</span>
             <span className="text-text-muted font-normal"> | الإدارة</span>
           </span>
 

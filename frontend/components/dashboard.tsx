@@ -245,7 +245,7 @@ export function Dashboard() {
                 الإيرادات مقابل المصروفات — {currentYear}
               </h2>
               <div className="h-[240px] sm:h-[280px]" dir="ltr">
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height={240}>
                   <BarChart data={chartData} barCategoryGap="28%" barGap={4}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#1C3230" vertical={false} />
                     <XAxis
@@ -297,7 +297,7 @@ export function Dashboard() {
               {pieData.length > 0 ? (
                 <>
                   <div className="h-[160px]" dir="ltr">
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height={160}>
                       <PieChart>
                         <Pie
                           data={pieData}

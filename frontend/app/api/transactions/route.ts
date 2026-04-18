@@ -117,24 +117,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
-export async function PUT() {
-  return NextResponse.json(
-    { error: "التعديل غير مسموح — المعاملات غير قابلة للتغيير" },
-    { status: 405 }
-  );
-}
-
-export async function PATCH() {
-  return NextResponse.json(
-    { error: "التعديل غير مسموح — المعاملات غير قابلة للتغيير" },
-    { status: 405 }
-  );
-}
-
-export async function DELETE() {
-  return NextResponse.json(
-    { error: "الحذف غير مسموح — المعاملات غير قابلة للتغيير" },
-    { status: 405 }
-  );
-}

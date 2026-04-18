@@ -4,7 +4,12 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "@/lib/auth-client";
 
-const adminLinks = [
+const adminLinks: {
+  href: string;
+  label: string;
+  hideOnMobile?: boolean;
+  icon: (active: boolean) => React.ReactNode;
+}[] = [
   {
     href: "/admin/dashboard",
     label: "الرئيسية",
@@ -18,6 +23,21 @@ const adminLinks = [
     ),
   },
   {
+    href: "/admin/transactions",
+    label: "المعاملات",
+    hideOnMobile: true,
+    icon: (active: boolean) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+        <line x1="8" y1="6" x2="21" y2="6" />
+        <line x1="8" y1="12" x2="21" y2="12" />
+        <line x1="8" y1="18" x2="21" y2="18" />
+        <line x1="3" y1="6" x2="3.01" y2="6" />
+        <line x1="3" y1="12" x2="3.01" y2="12" />
+        <line x1="3" y1="18" x2="3.01" y2="18" />
+      </svg>
+    ),
+  },
+  {
     href: "/admin/transactions/new",
     label: "إضافة",
     icon: (active: boolean) => (
@@ -25,6 +45,19 @@ const adminLinks = [
         <circle cx="12" cy="12" r="9" fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.15 : 0} />
         <line x1="12" y1="8" x2="12" y2="16" />
         <line x1="8" y1="12" x2="16" y2="12" />
+      </svg>
+    ),
+  },
+  {
+    href: "/admin/categories",
+    label: "الفئات",
+    hideOnMobile: true,
+    icon: (active: boolean) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 9h16" />
+        <path d="M4 15h16" />
+        <path d="M10 3L8 21" />
+        <path d="M16 3L14 21" />
       </svg>
     ),
   },
@@ -77,7 +110,7 @@ export function Sidebar() {
               </svg>
             </span>
             <div>
-              <p className="text-sm font-bold text-text-primary leading-tight">برج الوليد</p>
+              <p className="text-sm font-bold text-text-primary leading-tight">اطعام</p>
               <p className="text-[10px] text-primary leading-tight">لوحة الإدارة</p>
             </div>
           </Link>
@@ -101,7 +134,7 @@ export function Sidebar() {
                 <span className={active ? "text-primary" : "text-text-muted"}>
                   {link.icon(active)}
                 </span>
-                <span>{link.label === "إضافة" ? "إضافة معاملة" : link.label === "بند جديد" ? "إضافة بند متكرر" : link.label}</span>
+                <span>{link.label === "إضافة" ? "إضافة معاملة" : link.label === "بند جديد" ? "إضافة بند متكرر" : link.label === "المعاملات" ? "سجل المعاملات" : link.label === "الفئات" ? "إدارة الفئات" : link.label}</span>
                 {active && <span className="mr-auto w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
               </Link>
             );
@@ -136,7 +169,7 @@ export function Sidebar() {
       {/* ── Mobile bottom tab bar ── */}
       <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-surface/95 backdrop-blur-xl border-t border-border">
         <div className="flex items-stretch h-16">
-          {adminLinks.map((link) => {
+          {adminLinks.filter((l) => !l.hideOnMobile).map((link) => {
             const active = pathname === link.href;
             return (
               <Link

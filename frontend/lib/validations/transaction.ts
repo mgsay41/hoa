@@ -19,6 +19,26 @@ export const createTransactionSchema = z.object({
 
 export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;
 
+export const updateTransactionSchema = z.object({
+  type: z.enum(["INCOME", "EXPENSE"]).optional(),
+  amount: z
+    .string()
+    .min(1, "المبلغ مطلوب")
+    .refine((val) => !isNaN(Number(val)) && Number(val) > 0, {
+      message: "المبلغ يجب أن يكون رقماً موجباً",
+    })
+    .optional(),
+  date: z.string().min(1, "التاريخ مطلوب").optional(),
+  descriptionAr: z.string().min(1, "الوصف مطلوب").optional(),
+  categoryId: z.string().min(1, "الفئة مطلوبة").optional(),
+  paymentMethod: z.enum(["CASH", "BANK_TRANSFER", "CHECK", "OTHER"]).optional(),
+  notes: z.string().optional(),
+  attachmentUrl: z.string().optional(),
+  attachmentType: z.enum(["IMAGE", "PDF"]).optional(),
+});
+
+export type UpdateTransactionInput = z.infer<typeof updateTransactionSchema>;
+
 export const getTransactionsQuerySchema = z.object({
   month: z.string().optional(),
   year: z.string().optional(),

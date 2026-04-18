@@ -3,6 +3,22 @@ import Link from "next/link";
 export default function AdminDashboardPage() {
   const shortcuts = [
     {
+      href: "/admin/transactions",
+      label: "سجل المعاملات",
+      desc: "عرض وتعديل وحذف جميع المعاملات",
+      color: "border-primary/20 hover:border-primary/40 hover:bg-primary/5",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="text-primary">
+          <line x1="8" y1="6" x2="21" y2="6" />
+          <line x1="8" y1="12" x2="21" y2="12" />
+          <line x1="8" y1="18" x2="21" y2="18" />
+          <line x1="3" y1="6" x2="3.01" y2="6" />
+          <line x1="3" y1="12" x2="3.01" y2="12" />
+          <line x1="3" y1="18" x2="3.01" y2="18" />
+        </svg>
+      ),
+    },
+    {
       href: "/admin/transactions/new",
       label: "إضافة معاملة",
       desc: "تسجيل إيراد أو مصروف جديد",
@@ -12,6 +28,20 @@ export default function AdminDashboardPage() {
           <circle cx="12" cy="12" r="9" />
           <line x1="12" y1="8" x2="12" y2="16" />
           <line x1="8" y1="12" x2="16" y2="12" />
+        </svg>
+      ),
+    },
+    {
+      href: "/admin/categories",
+      label: "الفئات",
+      desc: "إضافة وتعديل فئات الإيرادات والمصروفات",
+      color: "border-border hover:border-border-light hover:bg-surface-elevated",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="text-text-secondary">
+          <path d="M4 9h16" />
+          <path d="M4 15h16" />
+          <path d="M10 3L8 21" />
+          <path d="M16 3L14 21" />
         </svg>
       ),
     },
@@ -47,7 +77,7 @@ export default function AdminDashboardPage() {
     {
       href: "/",
       label: "عرض الموقع العام",
-      desc: "لوحة التحكم المالية للسكان",
+      desc: "لوحة التحكم المالية العامة",
       color: "border-border hover:border-border-light hover:bg-surface-elevated",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="text-text-secondary">
@@ -62,7 +92,7 @@ export default function AdminDashboardPage() {
     <div className="fade-in">
       <div className="mb-6">
         <h1 className="text-xl font-bold text-text-primary">نظرة عامة</h1>
-        <p className="text-sm text-text-muted mt-1">مرحباً بك في لوحة إدارة برج الوليد</p>
+        <p className="text-sm text-text-muted mt-1">مرحباً بك في لوحة إدارة اطعام</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
