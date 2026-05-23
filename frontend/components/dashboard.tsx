@@ -56,7 +56,7 @@ export function Dashboard() {
   const [categories, setCategories] = useState<CategoryData[]>([]);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState<Period>("year");
+  const [period, setPeriod] = useState<Period>("month");
 
   const now = new Date();
   const currentYear = now.getFullYear();
