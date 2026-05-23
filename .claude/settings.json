@@ -11,7 +11,12 @@
       "Read(//c/Users/mgsay/OneDrive/Desktop/Software/ development/HOA/frontend/lib/**)",
       "Read(//c/Users/mgsay/**)",
       "Bash(xargs grep *)",
-      "Bash(find \"c:\\\\Users\\\\mgsay\\\\OneDrive\\\\Desktop\\\\Software development\\\\HOA\\\\frontend\" -type f \\\\\\( -name \"*.tsx\" -o -name \"*.ts\" \\\\\\) ! -path \"*/node_modules/*\" ! -path \"*/.next/*\" -exec grep -l \"attachment\\\\|document\\\\|file\\\\|upload\" {} \\\\;)"
+      "Bash(find \"c:\\\\Users\\\\mgsay\\\\OneDrive\\\\Desktop\\\\Software development\\\\HOA\\\\frontend\" -type f \\\\\\( -name \"*.tsx\" -o -name \"*.ts\" \\\\\\) ! -path \"*/node_modules/*\" ! -path \"*/.next/*\" -exec grep -l \"attachment\\\\|document\\\\|file\\\\|upload\" {} \\\\;)",
+      "Bash(npx prisma *)",
+      "Bash(cat prisma/prisma.config.ts)",
+      "Bash(cat prisma.config.ts)",
+      "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=\"yes\" npx prisma migrate reset --force)",
+      "Bash(npm run *)"
     ]
   }
 }
