@@ -77,7 +77,7 @@ export default function AdminDashboardPage() {
     {
       href: "/",
       label: "عرض الموقع العام",
-      desc: "لوحة التحكم المالية العامة",
+      desc: "لوحة التحكم المالية للسكان",
       color: "border-border hover:border-border-light hover:bg-surface-elevated",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="text-text-secondary">
@@ -92,7 +92,7 @@ export default function AdminDashboardPage() {
     <div className="fade-in">
       <div className="mb-6">
         <h1 className="text-xl font-bold text-text-primary">نظرة عامة</h1>
-        <p className="text-sm text-text-muted mt-1">مرحباً بك في لوحة إدارة اطعام</p>
+        <p className="text-sm text-text-muted mt-1">مرحباً بك في لوحة إدارة برج الوليد</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">

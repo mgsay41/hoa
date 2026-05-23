@@ -88,6 +88,9 @@ export function TransactionForm({ categories, mode = "create", initialData }: Tr
         if (file) {
           body.attachmentUrl = attachmentUrl;
           body.attachmentType = attachmentType;
+        } else if (existingAttachmentUrl === null && initialData.attachmentUrl) {
+          body.attachmentUrl = null;
+          body.attachmentType = null;
         }
         const res = await fetch(`/api/transactions/${initialData.id}`, {
           method: "PUT",
@@ -122,7 +125,7 @@ export function TransactionForm({ categories, mode = "create", initialData }: Tr
         }
 
         toast("تمت إضافة المعاملة بنجاح");
-        router.push("/transactions");
+        router.push("/admin/transactions");
       }
     } catch {
       toast("حدث خطأ غير متوقع", "error");

@@ -110,7 +110,7 @@ export function Sidebar() {
               </svg>
             </span>
             <div>
-              <p className="text-sm font-bold text-text-primary leading-tight">اطعام</p>
+              <p className="text-sm font-bold text-text-primary leading-tight">برج الوليد</p>
               <p className="text-[10px] text-primary leading-tight">لوحة الإدارة</p>
             </div>
           </Link>

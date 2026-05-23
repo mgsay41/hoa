@@ -12,16 +12,16 @@ const ibmPlexArabic = IBM_Plex_Sans_Arabic({
 
 export const metadata: Metadata = {
   title: {
-    default: "اطعام — لوحة التحكم",
-    template: "%s | اطعام",
+    default: "اتحاد ملاك برج الوليد — لوحة التحكم المالية",
+    template: "%s | اتحاد ملاك برج الوليد",
   },
-  description: "نظام تتبع تبرعات ومصروفات اطعام الخيرية — تقارير مالية شفافة",
+  description: "نظام إدارة مالية اتحاد ملاك برج الوليد — تقارير مالية شفافة وتحليلات مفصلة",
   openGraph: {
-    title: "اطعام",
-    description: "لوحة التحكم — تبرعات ومصروفات وتقارير",
+    title: "اتحاد ملاك برج الوليد",
+    description: "لوحة التحكم المالية — إيرادات ومصروفات وتقارير",
     locale: "ar_SA",
     type: "website",
-    siteName: "اطعام",
+    siteName: "اتحاد ملاك برج الوليد",
   },
 };
 

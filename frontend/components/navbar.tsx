@@ -68,7 +68,7 @@ export function Navbar() {
                 </svg>
               </span>
               <span className="text-base font-bold text-text-primary">
-                <span className="text-primary">اطعام</span>
+                برج <span className="text-primary">الوليد</span>
               </span>
             </Link>
 
