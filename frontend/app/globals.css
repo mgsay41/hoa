@@ -1,22 +1,72 @@
 @import "tailwindcss";
 
+/* Theme tokens — dark is the default, light is opt-in via <html data-theme="light"> */
+:root {
+  --primary: #2DDAC4;
+  --primary-dark: #22B5A2;
+  --primary-light: rgba(45, 218, 196, 0.12);
+  --on-primary: #070F0E;
+  --income: #34D399;
+  --expense: #FB7185;
+  --income-bg: rgba(52, 211, 153, 0.1);
+  --expense-bg: rgba(251, 113, 133, 0.1);
+  --warning: #F5B938;
+  --warning-bg: rgba(245, 185, 56, 0.12);
+  --bg: #070F0E;
+  --surface: #0E1A19;
+  --surface-elevated: #162523;
+  --border: #1C3230;
+  --border-light: #253F3C;
+  --text-primary: #E0F7F5;
+  --text-secondary: #6BA9A4;
+  --text-muted: #4F7F7A;
+  --gold: #F5B938;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --primary: #0F9D8A;
+  --primary-dark: #0B7F70;
+  --primary-light: rgba(15, 157, 138, 0.12);
+  --on-primary: #FFFFFF;
+  --income: #059669;
+  --expense: #E11D48;
+  --income-bg: rgba(5, 150, 105, 0.09);
+  --expense-bg: rgba(225, 29, 72, 0.07);
+  --warning: #B7791F;
+  --warning-bg: rgba(183, 121, 31, 0.1);
+  --bg: #F3F7F6;
+  --surface: #FFFFFF;
+  --surface-elevated: #EDF3F2;
+  --border: #DCE7E5;
+  --border-light: #C6D8D5;
+  --text-primary: #0B2724;
+  --text-secondary: #3A6964;
+  --text-muted: #5F807C;
+  --gold: #B7791F;
+  color-scheme: light;
+}
+
 @theme inline {
-  --color-primary: #2DDAC4;
-  --color-primary-dark: #22B5A2;
-  --color-primary-light: rgba(45, 218, 196, 0.12);
-  --color-income: #34D399;
-  --color-expense: #FB7185;
-  --color-income-bg: rgba(52, 211, 153, 0.1);
-  --color-expense-bg: rgba(251, 113, 133, 0.1);
-  --color-bg: #070F0E;
-  --color-surface: #0E1A19;
-  --color-surface-elevated: #162523;
-  --color-border: #1C3230;
-  --color-border-light: #253F3C;
-  --color-text-primary: #E0F7F5;
-  --color-text-secondary: #6BA9A4;
-  --color-text-muted: #3C6864;
-  --color-gold: #F5B938;
+  --color-primary: var(--primary);
+  --color-primary-dark: var(--primary-dark);
+  --color-primary-light: var(--primary-light);
+  --color-on-primary: var(--on-primary);
+  --color-income: var(--income);
+  --color-expense: var(--expense);
+  --color-income-bg: var(--income-bg);
+  --color-expense-bg: var(--expense-bg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-border: var(--border);
+  --color-border-light: var(--border-light);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-gold: var(--gold);
   --font-sans: var(--font-ibm-plex-arabic);
 }
 
@@ -116,4 +166,18 @@ select option {
 
 .spin {
   animation: spin 0.9s linear infinite;
+}
+
+/* Dialog pop-in */
+@keyframes popIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.pop-in {
+  animation: popIn 0.18s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in, .toast-enter, .pop-in, .skeleton { animation: none; }
 }

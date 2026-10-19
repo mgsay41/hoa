@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useToast } from "@/components/toast";
+import { todayInputValue } from "@/lib/utils";
 
 type Category = {
   id: string;
@@ -13,22 +15,34 @@ type Category = {
 
 interface RecurringFormProps {
   categories: Category[];
+  initialData?: {
+    id: string;
+    nameAr: string;
+    type: "INCOME" | "EXPENSE";
+    amount: string;
+    categoryId: string;
+    dayOfMonth: number;
+    startDate: string;
+    endDate: string;
+    notes: string;
+  };
 }
 
 const fieldClass =
   "w-full px-4 py-3 rounded-xl bg-bg border border-border text-text-primary placeholder:text-text-muted text-sm focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none transition";
 
-export function RecurringForm({ categories }: RecurringFormProps) {
+export function RecurringForm({ categories, initialData }: RecurringFormProps) {
   const { toast } = useToast();
   const router = useRouter();
-  const [type, setType] = useState<"INCOME" | "EXPENSE">("EXPENSE");
-  const [nameAr, setNameAr] = useState("");
-  const [amount, setAmount] = useState("");
-  const [categoryId, setCategoryId] = useState("");
-  const [dayOfMonth, setDayOfMonth] = useState("1");
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().split("T")[0]);
-  const [endDate, setEndDate] = useState("");
-  const [notes, setNotes] = useState("");
+  const isEdit = !!initialData;
+  const [type, setType] = useState<"INCOME" | "EXPENSE">(initialData?.type ?? "EXPENSE");
+  const [nameAr, setNameAr] = useState(initialData?.nameAr ?? "");
+  const [amount, setAmount] = useState(initialData?.amount ?? "");
+  const [categoryId, setCategoryId] = useState(initialData?.categoryId ?? "");
+  const [dayOfMonth, setDayOfMonth] = useState(String(initialData?.dayOfMonth ?? 1));
+  const [startDate, setStartDate] = useState(() => initialData?.startDate ?? todayInputValue());
+  const [endDate, setEndDate] = useState(initialData?.endDate ?? "");
+  const [notes, setNotes] = useState(initialData?.notes ?? "");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const filteredCategories = categories.filter((c) => c.type === type);
@@ -46,23 +60,36 @@ export function RecurringForm({ categories }: RecurringFormProps) {
     }
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/recurring", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nameAr, type, amount, categoryId,
-          dayOfMonth: parseInt(dayOfMonth),
-          startDate, endDate: endDate || undefined,
-          notes: notes || undefined,
-        }),
-      });
+      const res = isEdit
+        ? await fetch(`/api/recurring/${initialData.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              nameAr, amount, categoryId,
+              dayOfMonth: parseInt(dayOfMonth),
+              endDate: endDate || null,
+              notes: notes || null,
+            }),
+          })
+        : await fetch("/api/recurring", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              nameAr, type, amount, categoryId,
+              dayOfMonth: parseInt(dayOfMonth),
+              startDate, endDate: endDate || undefined,
+              notes: notes || undefined,
+            }),
+          });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json();
-        toast(data.error || "حدث خطأ أثناء إضافة البند المتكرر", "error");
+        toast(data.error || (isEdit ? "حدث خطأ أثناء تحديث البند" : "حدث خطأ أثناء إضافة البند المتكرر"), "error");
         setIsSubmitting(false);
         return;
       }
-      toast("تمت إضافة البند المتكرر بنجاح");
+      if (isEdit) toast("تم تحديث البند — تُطبَّق التعديلات على الأشهر القادمة");
+      else if (data.generated > 0) toast(`تمت إضافة البند وإنشاء ${data.generated} معاملة مستحقة`);
+      else toast("تمت إضافة البند المتكرر بنجاح");
       router.push("/admin/recurring");
     } catch {
       toast("حدث خطأ غير متوقع", "error");
@@ -74,8 +101,12 @@ export function RecurringForm({ categories }: RecurringFormProps) {
   return (
     <div className="max-w-2xl mx-auto fade-in">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-text-primary">إضافة بند متكرر جديد</h1>
-        <p className="text-sm text-text-muted mt-1">بند يُنشأ تلقائياً كل شهر في يوم محدد</p>
+        <h1 className="text-xl font-bold text-text-primary">{isEdit ? "تعديل البند المتكرر" : "إضافة بند متكرر جديد"}</h1>
+        <p className="text-sm text-text-muted mt-1">
+          {isEdit
+            ? "التعديلات تنطبق على المعاملات القادمة فقط — المعاملات السابقة لا تتغير"
+            : "بند يُنشأ تلقائياً كل شهر في يوم محدد"}
+        </p>
       </div>
 
       <div className="bg-surface border border-border rounded-2xl p-5 sm:p-6">
@@ -105,7 +136,8 @@ export function RecurringForm({ categories }: RecurringFormProps) {
               <button
                 type="button"
                 onClick={() => handleTypeChange("INCOME")}
-                className={`flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all duration-200 border ${
+                disabled={isEdit}
+                className={`disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all duration-200 border ${
                   type === "INCOME"
                     ? "bg-income-bg border-income/40 text-income"
                     : "bg-bg border-border text-text-muted hover:border-income/20 hover:text-income/70"
@@ -120,7 +152,8 @@ export function RecurringForm({ categories }: RecurringFormProps) {
               <button
                 type="button"
                 onClick={() => handleTypeChange("EXPENSE")}
-                className={`flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all duration-200 border ${
+                disabled={isEdit}
+                className={`disabled:cursor-not-allowed disabled:opacity-60 flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all duration-200 border ${
                   type === "EXPENSE"
                     ? "bg-expense-bg border-expense/40 text-expense"
                     : "bg-bg border-border text-text-muted hover:border-expense/20 hover:text-expense/70"
@@ -207,7 +240,8 @@ export function RecurringForm({ categories }: RecurringFormProps) {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className={fieldClass}
+                className={`${fieldClass} disabled:opacity-60`}
+                disabled={isEdit}
                 required
               />
             </div>
@@ -240,17 +274,26 @@ export function RecurringForm({ categories }: RecurringFormProps) {
             />
           </div>
 
+          {isEdit && (
+            <Link
+              href="/admin/recurring"
+              className="w-full py-3.5 rounded-xl font-semibold text-sm flex items-center justify-center bg-surface-elevated border border-border text-text-secondary hover:border-border-light transition-colors"
+            >
+              إلغاء
+            </Link>
+          )}
+
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-3.5 rounded-xl font-semibold text-sm bg-primary text-bg hover:bg-primary-dark transition-all duration-200 mt-1 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full py-3.5 rounded-xl font-semibold text-sm bg-primary text-on-primary hover:bg-primary-dark transition-all duration-200 mt-1 flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <>
                 <svg className="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                 </svg>
-                جارٍ الإضافة...
+                {isEdit ? "جارٍ الحفظ..." : "جارٍ الإضافة..."}
               </>
             ) : (
               <>
@@ -258,7 +301,7 @@ export function RecurringForm({ categories }: RecurringFormProps) {
                   <line x1="12" y1="5" x2="12" y2="19" />
                   <line x1="5" y1="12" x2="19" y2="12" />
                 </svg>
-                إضافة البند المتكرر
+                {isEdit ? "حفظ التعديلات" : "إضافة البند المتكرر"}
               </>
             )}
           </button>

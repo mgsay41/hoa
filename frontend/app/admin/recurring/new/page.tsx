@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { RecurringForm } from "@/components/recurring-form";
 
+// Reads categories from the database — must not be frozen at build time
+export const dynamic = "force-dynamic";
+
 export default async function NewRecurringPage() {
   const categories = await prisma.category.findMany({
     select: {

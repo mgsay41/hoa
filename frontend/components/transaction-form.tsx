@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/toast";
-import { paymentMethodLabels } from "@/lib/utils";
+import { arabicMonths, paymentMethodLabels, todayInputValue } from "@/lib/utils";
 
 type Category = {
   id: string;
@@ -13,8 +13,11 @@ type Category = {
   icon: string | null;
 };
 
+type Unit = { id: string; code: string; monthlyFee: string };
+
 interface TransactionFormProps {
   categories: Category[];
+  units?: Unit[];
   mode?: "create" | "edit";
   initialData?: {
     id: string;
@@ -24,6 +27,10 @@ interface TransactionFormProps {
     descriptionAr: string;
     categoryId: string;
     paymentMethod: string;
+    fund: "OPERATING" | "RESERVE";
+    unitId: string | null;
+    periodMonth: number | null;
+    periodYear: number | null;
     notes: string | null;
     attachmentUrl: string | null;
     attachmentType: string | null;
@@ -33,16 +40,20 @@ interface TransactionFormProps {
 const fieldClass =
   "w-full px-4 py-3 rounded-xl bg-bg border border-border text-text-primary placeholder:text-text-muted text-sm focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none transition";
 
-export function TransactionForm({ categories, mode = "create", initialData }: TransactionFormProps) {
+export function TransactionForm({ categories, units = [], mode = "create", initialData }: TransactionFormProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [type, setType] = useState<"INCOME" | "EXPENSE">(initialData?.type ?? "EXPENSE");
   const [amount, setAmount] = useState(initialData?.amount ?? "");
-  const [date, setDate] = useState(() => initialData?.date ?? new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(() => initialData?.date ?? todayInputValue());
   const [categoryId, setCategoryId] = useState(initialData?.categoryId ?? "");
   const [descriptionAr, setDescriptionAr] = useState(initialData?.descriptionAr ?? "");
   const [paymentMethod, setPaymentMethod] = useState(initialData?.paymentMethod ?? "CASH");
   const [notes, setNotes] = useState(initialData?.notes ?? "");
+  const [fund, setFund] = useState<"OPERATING" | "RESERVE">(initialData?.fund ?? "OPERATING");
+  const [unitId, setUnitId] = useState(initialData?.unitId ?? "");
+  const [periodMonth, setPeriodMonth] = useState(() => initialData?.periodMonth ?? new Date().getMonth() + 1);
+  const [periodYear, setPeriodYear] = useState(() => initialData?.periodYear ?? new Date().getFullYear());
   const [file, setFile] = useState<File | null>(null);
   const [existingAttachmentUrl, setExistingAttachmentUrl] = useState<string | null>(initialData?.attachmentUrl ?? null);
   const [existingAttachmentType] = useState<string | null>(initialData?.attachmentType ?? null);
@@ -53,7 +64,18 @@ export function TransactionForm({ categories, mode = "create", initialData }: Tr
   const handleTypeChange = (newType: "INCOME" | "EXPENSE") => {
     setType(newType);
     setCategoryId("");
+    if (newType === "EXPENSE") setUnitId("");
   };
+
+  const handleUnitChange = (id: string) => {
+    setUnitId(id);
+    const unit = units.find((u) => u.id === id);
+    if (unit && !amount) setAmount(Number(unit.monthlyFee).toString());
+  };
+
+  const unitFields = type === "INCOME" && unitId
+    ? { unitId, periodMonth, periodYear }
+    : { unitId: null, periodMonth: null, periodYear: null };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,8 +104,9 @@ export function TransactionForm({ categories, mode = "create", initialData }: Tr
 
       if (mode === "edit" && initialData) {
         const body: Record<string, unknown> = {
-          type, amount, date, descriptionAr, categoryId, paymentMethod,
-          notes: notes || undefined,
+          type, amount, date, descriptionAr, categoryId, paymentMethod, fund,
+          ...unitFields,
+          notes: notes || null,
         };
         if (file) {
           body.attachmentUrl = attachmentUrl;
@@ -110,7 +133,8 @@ export function TransactionForm({ categories, mode = "create", initialData }: Tr
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            type, amount, date, descriptionAr, categoryId, paymentMethod,
+            type, amount, date, descriptionAr, categoryId, paymentMethod, fund,
+            ...unitFields,
             notes: notes || undefined,
             attachmentUrl: file ? attachmentUrl : undefined,
             attachmentType: file ? attachmentType : undefined,
@@ -274,6 +298,77 @@ export function TransactionForm({ categories, mode = "create", initialData }: Tr
             </select>
           </div>
 
+          {/* Fund */}
+          <div>
+            <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-2.5">
+              الصندوق
+            </label>
+            <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="الصندوق">
+              {(["OPERATING", "RESERVE"] as const).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  role="radio"
+                  aria-checked={fund === f}
+                  onClick={() => setFund(f)}
+                  className={`py-2.5 rounded-xl text-sm font-medium border transition-colors ${
+                    fund === f
+                      ? f === "RESERVE"
+                        ? "bg-warning-bg border-warning/40 text-warning"
+                        : "bg-primary/10 border-primary/40 text-primary"
+                      : "bg-bg border-border text-text-muted hover:text-text-secondary"
+                  }`}
+                >
+                  {f === "RESERVE" ? "صندوق الطوارئ" : "الحساب الجاري"}
+                </button>
+              ))}
+            </div>
+            {fund === "RESERVE" && (
+              <p className="text-[11px] text-text-muted mt-1.5">
+                {type === "EXPENSE" ? "سيُخصم المبلغ من رصيد صندوق الطوارئ" : "سيُضاف المبلغ إلى رصيد صندوق الطوارئ"}
+              </p>
+            )}
+          </div>
+
+          {/* Unit dues (income only) */}
+          {type === "INCOME" && units.length > 0 && (
+            <div className="rounded-xl border border-border p-4 bg-bg/50">
+              <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-2.5">
+                اشتراك وحدة
+                <span className="normal-case font-normal text-text-muted mr-1">(اختياري)</span>
+              </label>
+              <select value={unitId} onChange={(e) => handleUnitChange(e.target.value)} className={fieldClass}>
+                <option value="">ليست دفعة اشتراك لوحدة</option>
+                {units.map((u) => (
+                  <option key={u.id} value={u.id}>وحدة {u.code}</option>
+                ))}
+              </select>
+              {unitId && (
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <span className="block text-[11px] text-text-muted mb-1.5">عن شهر</span>
+                    <select value={periodMonth} onChange={(e) => setPeriodMonth(Number(e.target.value))} className={fieldClass}>
+                      {arabicMonths.map((m, i) => (
+                        <option key={i} value={i + 1}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <span className="block text-[11px] text-text-muted mb-1.5">سنة</span>
+                    <input
+                      type="number"
+                      min={2000}
+                      max={2100}
+                      value={periodYear}
+                      onChange={(e) => setPeriodYear(Number(e.target.value))}
+                      className={fieldClass}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Attachment */}
           <div>
             <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-2.5">
@@ -354,8 +449,8 @@ export function TransactionForm({ categories, mode = "create", initialData }: Tr
             disabled={isSubmitting}
             className={`w-full py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 mt-1 flex items-center justify-center gap-2 ${
               type === "INCOME"
-                ? "bg-income text-bg hover:bg-income/90"
-                : "bg-primary text-bg hover:bg-primary-dark"
+                ? "bg-income text-on-primary hover:bg-income/90"
+                : "bg-primary text-on-primary hover:bg-primary-dark"
             } disabled:opacity-40 disabled:cursor-not-allowed`}
           >
             {isSubmitting ? (

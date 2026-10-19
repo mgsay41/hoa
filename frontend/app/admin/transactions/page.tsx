@@ -1,5 +1,8 @@
 import { prisma } from "@/lib/prisma";
-import { AdminTransactionsList } from "@/components/admin-transactions-list";
+import { TransactionsBrowser } from "@/components/transactions-browser";
+
+// Reads categories from the database — must not be frozen at build time
+export const dynamic = "force-dynamic";
 
 export default async function AdminTransactionsPage() {
   const categories = await prisma.category.findMany({
@@ -13,5 +16,5 @@ export default async function AdminTransactionsPage() {
     orderBy: { nameAr: "asc" },
   });
 
-  return <AdminTransactionsList categories={categories} />;
+  return <TransactionsBrowser categories={categories} admin />;
 }

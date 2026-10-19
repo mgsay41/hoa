@@ -26,11 +26,12 @@ function isRateLimited(ip: string): boolean {
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Every write to the API (except Better Auth, which has its own limiter) is rate limited
   const isAdminApi =
-    (pathname.startsWith("/api/transactions") && (request.method === "POST" || request.method === "PUT" || request.method === "DELETE")) ||
-    (pathname.startsWith("/api/recurring") && (request.method === "POST" || request.method === "PATCH")) ||
-    (pathname.startsWith("/api/categories") && (request.method === "POST" || request.method === "PUT" || request.method === "DELETE")) ||
-    pathname.startsWith("/api/upload");
+    pathname.startsWith("/api/") &&
+    !pathname.startsWith("/api/auth") &&
+    request.method !== "GET" &&
+    request.method !== "HEAD";
 
   if (isAdminApi) {
     const ip = getClientIp(request);

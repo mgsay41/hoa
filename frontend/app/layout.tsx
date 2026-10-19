@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans_Arabic } from "next/font/google";
 import { ToastProvider } from "@/components/toast";
+import { ConfirmProvider } from "@/components/confirm-dialog";
+import { ThemeProvider, themeInitScript } from "@/components/theme";
 import "./globals.css";
 
 const ibmPlexArabic = IBM_Plex_Sans_Arabic({
@@ -35,9 +37,17 @@ export default function RootLayout({
       lang="ar"
       dir="rtl"
       className={`${ibmPlexArabic.variable} antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="min-h-screen flex flex-col">
-        <ToastProvider>{children}</ToastProvider>
+        <ThemeProvider>
+          <ToastProvider>
+            <ConfirmProvider>{children}</ConfirmProvider>
+          </ToastProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

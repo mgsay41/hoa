@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn } from "@/lib/auth-client";
 
@@ -44,7 +45,7 @@ export default function AdminLoginPage() {
         </div>
 
         {/* Card */}
-        <div className="bg-surface border border-border rounded-2xl p-6 shadow-xl shadow-black/20">
+        <div className="bg-surface border border-border rounded-2xl p-6 shadow-xl shadow-black/10">
           <h2 className="text-base font-semibold text-text-primary mb-5 text-center">
             تسجيل دخول المسؤول
           </h2>
@@ -95,6 +96,7 @@ export default function AdminLoginPage() {
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary transition-colors"
+                  aria-label={showPassword ? "إخفاء كلمة المرور" : "إظهار كلمة المرور"}
                 >
                   {showPassword ? (
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -128,7 +130,7 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-primary text-bg rounded-xl font-semibold text-sm hover:bg-primary-dark transition-all duration-200 mt-1 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-primary text-on-primary rounded-xl font-semibold text-sm hover:bg-primary-dark transition-all duration-200 mt-1 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>
@@ -146,9 +148,9 @@ export default function AdminLoginPage() {
 
         {/* Back link */}
         <div className="text-center mt-5">
-          <a href="/" className="text-xs text-text-muted hover:text-primary transition-colors">
+          <Link href="/" className="text-xs text-text-muted hover:text-primary transition-colors">
             ← العودة للموقع
-          </a>
+          </Link>
         </div>
       </div>
     </div>

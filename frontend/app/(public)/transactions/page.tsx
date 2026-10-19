@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import { TransactionsList } from "@/components/transactions-list";
+import { TransactionsBrowser } from "@/components/transactions-browser";
 import type { Metadata } from "next";
+
+// Reads categories from the database — must not be frozen at build time
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "سجل المعاملات",
@@ -19,5 +22,5 @@ export default async function TransactionsPage() {
     orderBy: { nameAr: "asc" },
   });
 
-  return <TransactionsList categories={categories} />;
+  return <TransactionsBrowser categories={categories} />;
 }

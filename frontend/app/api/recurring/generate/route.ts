@@ -1,100 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { getAdminSession } from "@/lib/admin";
+import { generateRecurring } from "@/lib/recurring";
 
-export async function POST(request: NextRequest) {
+async function handle(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: request.headers });
     const authHeader = request.headers.get("authorization");
     const cronSecret = process.env.CRON_SECRET;
-
-    const isAdmin = !!session;
-    const isCron =
-      cronSecret && authHeader === `Bearer ${cronSecret}`;
+    const isCron = !!cronSecret && authHeader === `Bearer ${cronSecret}`;
+    const isAdmin = !isCron && !!(await getAdminSession(request.headers));
 
     if (!isAdmin && !isCron) {
       return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
     }
 
-    const now = new Date();
-    const currentMonth = now.getMonth() + 1;
-    const currentYear = now.getFullYear();
-
-    const activeItems = await prisma.recurringItem.findMany({
-      where: {
-        isActive: true,
-        startDate: { lte: now },
-        OR: [
-          { endDate: null },
-          { endDate: { gte: new Date(currentYear, currentMonth - 1, 1) } },
-        ],
-      },
-      include: { category: true },
-    });
-
-    let generated = 0;
-
-    for (const item of activeItems) {
-      if (
-        item.lastGeneratedMonth === currentMonth &&
-        item.lastGeneratedYear === currentYear
-      ) {
-        continue;
-      }
-
-      const endDate = item.endDate ? new Date(item.endDate) : null;
-      const transactionDate = new Date(
-        currentYear,
-        currentMonth - 1,
-        item.dayOfMonth
-      );
-
-      if (endDate && transactionDate > endDate) {
-        continue;
-      }
-
-      if (transactionDate > now) {
-        continue;
-      }
-
-      const monthName = transactionDate.toLocaleDateString("ar-EG", {
-        month: "long",
-        year: "numeric",
-      });
-
-      await prisma.transaction.create({
-        data: {
-          type: item.type,
-          amount: item.amount,
-          date: transactionDate,
-          descriptionAr: `${item.nameAr} — ${monthName}`,
-          categoryId: item.categoryId,
-          paymentMethod: "CASH",
-          recurringItemId: item.id,
-        },
-      });
-
-      await prisma.recurringItem.update({
-        where: { id: item.id },
-        data: {
-          lastGeneratedMonth: currentMonth,
-          lastGeneratedYear: currentYear,
-        },
-      });
-
-      generated++;
-    }
-
-    return NextResponse.json({
-      success: true,
-      generated,
-      month: currentMonth,
-      year: currentYear,
-    });
+    const result = await generateRecurring();
+    return NextResponse.json({ success: true, ...result });
   } catch {
-    return NextResponse.json(
-      { error: "حدث خطأ في الخادم" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "حدث خطأ في الخادم" }, { status: 500 });
   }
 }
+
+// Vercel Cron calls with GET (and the CRON_SECRET bearer); the admin "generate now" button uses POST
+export const GET = handle;
+export const POST = handle;

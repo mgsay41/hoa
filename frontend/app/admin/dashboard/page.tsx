@@ -1,120 +1,209 @@
 import Link from "next/link";
+import { prisma } from "@/lib/prisma";
+import { getFundBalances } from "@/lib/funds";
+import { getDuesLedger } from "@/lib/dues";
+import { arabicMonths, formatAmount } from "@/lib/utils";
+import { TrendBadge } from "@/components/states";
 
-export default function AdminDashboardPage() {
-  const shortcuts = [
-    {
-      href: "/admin/transactions",
-      label: "سجل المعاملات",
-      desc: "عرض وتعديل وحذف جميع المعاملات",
-      color: "border-primary/20 hover:border-primary/40 hover:bg-primary/5",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="text-primary">
-          <line x1="8" y1="6" x2="21" y2="6" />
-          <line x1="8" y1="12" x2="21" y2="12" />
-          <line x1="8" y1="18" x2="21" y2="18" />
-          <line x1="3" y1="6" x2="3.01" y2="6" />
-          <line x1="3" y1="12" x2="3.01" y2="12" />
-          <line x1="3" y1="18" x2="3.01" y2="18" />
-        </svg>
-      ),
-    },
-    {
-      href: "/admin/transactions/new",
-      label: "إضافة معاملة",
-      desc: "تسجيل إيراد أو مصروف جديد",
-      color: "border-primary/20 hover:border-primary/40 hover:bg-primary/5",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="text-primary">
-          <circle cx="12" cy="12" r="9" />
-          <line x1="12" y1="8" x2="12" y2="16" />
-          <line x1="8" y1="12" x2="16" y2="12" />
-        </svg>
-      ),
-    },
-    {
-      href: "/admin/categories",
-      label: "الفئات",
-      desc: "إضافة وتعديل فئات الإيرادات والمصروفات",
-      color: "border-border hover:border-border-light hover:bg-surface-elevated",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="text-text-secondary">
-          <path d="M4 9h16" />
-          <path d="M4 15h16" />
-          <path d="M10 3L8 21" />
-          <path d="M16 3L14 21" />
-        </svg>
-      ),
-    },
-    {
-      href: "/admin/recurring",
-      label: "البنود المتكررة",
-      desc: "إدارة المدفوعات الشهرية التلقائية",
-      color: "border-border hover:border-border-light hover:bg-surface-elevated",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="text-text-secondary">
-          <polyline points="17 1 21 5 17 9" />
-          <path d="M3 11V9a4 4 0 0 1 4-4h14" />
-          <polyline points="7 23 3 19 7 15" />
-          <path d="M21 13v2a4 4 0 0 1-4 4H3" />
-        </svg>
-      ),
-    },
-    {
-      href: "/admin/recurring/new",
-      label: "إضافة بند متكرر",
-      desc: "جدولة معاملة شهرية تلقائية",
-      color: "border-border hover:border-border-light hover:bg-surface-elevated",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="text-text-secondary">
-          <path d="M21 13v2a4 4 0 0 1-4 4H3" />
-          <polyline points="7 23 3 19 7 15" />
-          <circle cx="18" cy="6" r="4" />
-          <line x1="18" y1="4" x2="18" y2="8" />
-          <line x1="16" y1="6" x2="20" y2="6" />
-        </svg>
-      ),
-    },
-    {
-      href: "/",
-      label: "عرض الموقع العام",
-      desc: "لوحة التحكم المالية للسكان",
-      color: "border-border hover:border-border-light hover:bg-surface-elevated",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" className="text-text-secondary">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-          <polyline points="9 22 9 12 15 12 15 22" />
-        </svg>
-      ),
-    },
+export const dynamic = "force-dynamic";
+
+async function monthTotals(year: number, month: number) {
+  const rows = await prisma.transaction.groupBy({
+    by: ["type"],
+    where: { date: { gte: new Date(year, month - 1, 1), lt: new Date(year, month, 1) } },
+    _sum: { amount: true },
+  });
+  const income = Number(rows.find((r) => r.type === "INCOME")?._sum.amount ?? 0);
+  const expense = Number(rows.find((r) => r.type === "EXPENSE")?._sum.amount ?? 0);
+  return { income, expense, net: income - expense };
+}
+
+export default async function AdminDashboardPage() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  const prevMonth = month === 1 ? 12 : month - 1;
+
+  const [current, previous, funds, ledger, recurring, lastGenerated, budgetCats, spent, recentLogs] = await Promise.all([
+    monthTotals(year, month),
+    monthTotals(prevYear, prevMonth),
+    getFundBalances(),
+    getDuesLedger(year, now),
+    prisma.recurringItem.findMany({ where: { isActive: true }, select: { lastGeneratedMonth: true, lastGeneratedYear: true, dayOfMonth: true } }),
+    prisma.transaction.findFirst({ where: { recurringItemId: { not: null } }, orderBy: { createdAt: "desc" }, select: { createdAt: true } }),
+    prisma.category.findMany({ where: { type: "EXPENSE", monthlyBudget: { not: null } }, select: { id: true, nameAr: true, monthlyBudget: true } }),
+    prisma.transaction.groupBy({
+      by: ["categoryId"],
+      where: { type: "EXPENSE", date: { gte: new Date(year, month - 1, 1), lt: new Date(year, month, 1) } },
+      _sum: { amount: true },
+    }),
+    prisma.auditLog.findMany({ orderBy: { createdAt: "desc" }, take: 5, select: { id: true, action: true, summary: true, createdAt: true } }),
+  ]);
+
+  const unpaidThisMonth = ledger.units.filter((u) => {
+    const m = u.months[month - 1];
+    return m && (m.status === "DUE" || m.status === "LATE" || m.status === "PARTIAL");
+  });
+  const recurringPending = recurring.filter(
+    (r) =>
+      r.dayOfMonth <= now.getDate() &&
+      !(r.lastGeneratedMonth === month && r.lastGeneratedYear === year)
+  ).length;
+  const overBudget = budgetCats.filter((c) => {
+    const actual = Number(spent.find((s) => s.categoryId === c.id)?._sum.amount ?? 0);
+    return actual > Number(c.monthlyBudget);
+  });
+
+  const alerts: { text: string; href: string; tone: "warning" | "expense" }[] = [];
+  if (unpaidThisMonth.length > 0) {
+    alerts.push({ text: `${unpaidThisMonth.length} وحدة لم تسدد اشتراك ${arabicMonths[month - 1]}`, href: "/admin/units/collect", tone: "warning" });
+  }
+  if (ledger.totals.unitsInArrears > 0) {
+    alerts.push({ text: `متأخرات مستحقة على ${ledger.totals.unitsInArrears} وحدة بإجمالي ${formatAmount(ledger.totals.arrears)} ج.م`, href: "/admin/units", tone: "expense" });
+  }
+  if (recurringPending > 0) {
+    alerts.push({ text: `${recurringPending} بند متكرر مستحق لم يُنشأ بعد هذا الشهر`, href: "/admin/recurring", tone: "warning" });
+  }
+  for (const c of overBudget) {
+    alerts.push({ text: `تجاوز الميزانية الشهرية: ${c.nameAr}`, href: "/admin/categories", tone: "expense" });
+  }
+
+  const actions = [
+    { href: "/admin/transactions/new", label: "إضافة معاملة", primary: true },
+    { href: "/admin/units/collect", label: "تحصيل الاشتراكات", primary: true },
+    { href: "/admin/reserve", label: "صندوق الطوارئ" },
+    { href: "/admin/recurring", label: "البنود المتكررة" },
+    { href: "/admin/units", label: "الوحدات والملاك" },
+    { href: "/admin/categories", label: "الفئات والميزانيات" },
   ];
 
   return (
     <div className="fade-in">
       <div className="mb-6">
         <h1 className="text-xl font-bold text-text-primary">نظرة عامة</h1>
-        <p className="text-sm text-text-muted mt-1">مرحباً بك في لوحة إدارة برج الوليد</p>
+        <p className="text-sm text-text-muted mt-1">{arabicMonths[month - 1]} {year}</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
-        {shortcuts.map((s) => (
-          <Link
-            key={s.href}
-            href={s.href}
-            className={`flex items-center gap-4 p-4 bg-surface border rounded-2xl transition-all duration-200 ${s.color}`}
-          >
-            <div className="w-10 h-10 rounded-xl bg-surface-elevated flex items-center justify-center shrink-0">
-              {s.icon}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-text-primary">{s.label}</p>
-              <p className="text-xs text-text-muted mt-0.5 leading-snug">{s.desc}</p>
-            </div>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="text-text-muted mr-auto shrink-0">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </Link>
-        ))}
+      {/* Month stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+        <StatCard label="إيرادات الشهر" value={current.income} tone="text-income">
+          <TrendBadge current={current.income} previous={previous.income} />
+        </StatCard>
+        <StatCard label="مصروفات الشهر" value={current.expense} tone="text-expense">
+          <TrendBadge current={current.expense} previous={previous.expense} goodWhenUp={false} />
+        </StatCard>
+        <StatCard label="الحساب الجاري" value={funds.operating} tone="text-primary" />
+        <StatCard label="صندوق الطوارئ" value={funds.reserve} tone="text-warning" />
       </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        <div className="lg:col-span-2 space-y-5">
+          {/* Alerts */}
+          <section className="bg-surface border border-border rounded-2xl overflow-hidden">
+            <h2 className="text-sm font-semibold text-text-primary px-4 py-3.5 border-b border-border">يحتاج انتباهك</h2>
+            {alerts.length === 0 ? (
+              <p className="px-4 py-6 text-sm text-income">✓ كل شيء محدّث — لا توجد تنبيهات</p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {alerts.map((a, i) => (
+                  <li key={i}>
+                    <Link href={a.href} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-elevated transition-colors">
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${a.tone === "expense" ? "bg-expense" : "bg-warning"}`} />
+                      <span className="flex-1 text-sm text-text-secondary">{a.text}</span>
+                      <span className="text-text-muted text-xs">←</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {/* Collection progress */}
+          <section className="bg-surface border border-border rounded-2xl p-4 sm:p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-text-primary">تحصيل {arabicMonths[month - 1]}</h2>
+              <span className="text-xs text-text-muted">
+                {ledger.totals.units - unpaidThisMonth.length} من {ledger.totals.units} وحدة
+              </span>
+            </div>
+            <div className="h-2 rounded-full bg-surface-elevated overflow-hidden mb-3">
+              <div
+                className="h-full bg-primary rounded-full"
+                style={{ width: `${ledger.totals.units ? ((ledger.totals.units - unpaidThisMonth.length) / ledger.totals.units) * 100 : 0}%` }}
+              />
+            </div>
+            {unpaidThisMonth.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {unpaidThisMonth.map((u) => (
+                  <span key={u.id} className="text-[11px] px-2 py-0.5 rounded-md bg-expense-bg text-expense font-medium">{u.code}</span>
+                ))}
+              </div>
+            )}
+            <p className="text-[11px] text-text-muted mt-3">
+              آخر تشغيل للبنود المتكررة:{" "}
+              {lastGenerated ? lastGenerated.createdAt.toLocaleDateString("ar-EG", { year: "numeric", month: "long", day: "numeric" }) : "—"}
+            </p>
+          </section>
+        </div>
+
+        <div className="space-y-5">
+          {/* Quick actions */}
+          <section className="bg-surface border border-border rounded-2xl p-4">
+            <h2 className="text-sm font-semibold text-text-primary mb-3">إجراءات سريعة</h2>
+            <div className="grid grid-cols-2 gap-2">
+              {actions.map((a) => (
+                <Link
+                  key={a.href}
+                  href={a.href}
+                  className={`text-center px-2 py-3 rounded-xl text-xs font-medium transition-colors ${
+                    a.primary
+                      ? "bg-primary text-on-primary hover:bg-primary-dark"
+                      : "border border-border text-text-secondary hover:border-primary/40 hover:text-primary"
+                  }`}
+                >
+                  {a.label}
+                </Link>
+              ))}
+            </div>
+          </section>
+
+          {/* Recent changes */}
+          <section className="bg-surface border border-border rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3.5 border-b border-border">
+              <h2 className="text-sm font-semibold text-text-primary">آخر التغييرات</h2>
+              <Link href="/audit" className="text-xs text-primary hover:underline">السجل الكامل</Link>
+            </div>
+            {recentLogs.length === 0 ? (
+              <p className="px-4 py-6 text-xs text-text-muted">لا توجد تغييرات بعد</p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {recentLogs.map((log) => (
+                  <li key={log.id} className="px-4 py-2.5">
+                    <p className="text-xs text-text-secondary line-clamp-2">{log.summary}</p>
+                    <p className="text-[10px] text-text-muted mt-0.5">
+                      {log.createdAt.toLocaleDateString("ar-EG", { month: "short", day: "numeric" })}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, tone, children }: { label: string; value: number; tone: string; children?: React.ReactNode }) {
+  return (
+    <div className="bg-surface border border-border rounded-xl p-3 sm:p-4">
+      <p className="text-[11px] text-text-muted mb-1">{label}</p>
+      <p className={`text-base sm:text-xl font-bold ${tone}`}>
+        {formatAmount(value)}
+        <span className="text-[10px] font-normal text-text-muted mr-0.5">ج.م</span>
+      </p>
+      {children && <div className="mt-1.5">{children}</div>}
     </div>
   );
 }

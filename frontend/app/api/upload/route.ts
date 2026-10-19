@@ -1,6 +1,6 @@
 import { v2 as cloudinary } from "cloudinary";
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getAdminSession, unauthorized } from "@/lib/admin";
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -19,10 +19,8 @@ const MAX_SIZE = 10 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: request.headers });
-    if (!session) {
-      return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-    }
+    const session = await getAdminSession(request.headers);
+    if (!session) return unauthorized();
 
     const formData = await request.formData();
     const file = formData.get("file") as File | null;

@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { useToast } from "@/components/toast";
-import { formatAmount, formatDate } from "@/lib/utils";
+import { useConfirm } from "@/components/confirm-dialog";
+import { ErrorState } from "@/components/states";
+import { arabicMonths, formatAmount, formatDate } from "@/lib/utils";
 
 type Category = {
   id: string;
@@ -31,17 +34,21 @@ type RecurringItem = {
 
 export function RecurringManagement() {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [items, setItems] = useState<RecurringItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
 
   const fetchItems = useCallback(async () => {
+    setError(false);
     try {
       const res = await fetch("/api/recurring");
-      if (!res.ok) return;
+      if (!res.ok) throw new Error();
       setItems(await res.json());
     } catch {
-      // silently fail
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -51,7 +58,34 @@ export function RecurringManagement() {
     fetchItems();
   }, [fetchItems]);
 
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/recurring/generate", { method: "POST" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        toast(data.error || "تعذر إنشاء المعاملات", "error");
+        return;
+      }
+      toast(data.generated > 0 ? `تم إنشاء ${data.generated} معاملة مستحقة` : "لا توجد معاملات مستحقة — كل شيء محدّث");
+      await fetchItems();
+    } catch {
+      toast("حدث خطأ غير متوقع", "error");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   const handleToggle = async (id: string, currentActive: boolean) => {
+    if (currentActive) {
+      const ok = await confirm({
+        title: "تعطيل البند؟",
+        message: "لن تُنشأ معاملات جديدة لهذا البند حتى تعيد تفعيله. عند إعادة التفعيل لن تُنشأ معاملات للأشهر التي كان فيها معطلاً.",
+        confirmLabel: "تعطيل",
+        danger: true,
+      });
+      if (!ok) return;
+    }
     setTogglingId(id);
     try {
       const res = await fetch(`/api/recurring/${id}/toggle`, { method: "PATCH" });
@@ -74,11 +108,24 @@ export function RecurringManagement() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-xl font-bold text-text-primary">إدارة البنود المتكررة</h1>
-          <p className="text-sm text-text-muted mt-0.5">تفعيل وتعطيل البنود الشهرية</p>
+          <p className="text-sm text-text-muted mt-0.5">تُنشأ المعاملات تلقائياً يومياً — ويمكنك تشغيلها الآن يدوياً</p>
         </div>
-        <a
+        <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={handleGenerate}
+          disabled={generating}
+          className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-border text-sm font-medium text-text-secondary hover:text-primary hover:border-primary/40 transition-colors disabled:opacity-50"
+        >
+          <svg className={generating ? "spin" : ""} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="23 4 23 10 17 10" />
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+          </svg>
+          <span className="hidden sm:inline">{generating ? "جارٍ الإنشاء..." : "إنشاء المستحق الآن"}</span>
+        </button>
+        <Link
           href="/admin/recurring/new"
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-bg rounded-xl text-sm font-semibold hover:bg-primary-dark transition-colors"
+          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-on-primary rounded-xl text-sm font-semibold hover:bg-primary-dark transition-colors"
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <line x1="12" y1="5" x2="12" y2="19" />
@@ -86,7 +133,8 @@ export function RecurringManagement() {
           </svg>
           <span className="hidden sm:inline">إضافة بند</span>
           <span className="sm:hidden">إضافة</span>
-        </a>
+        </Link>
+        </div>
       </div>
 
       {loading ? (
@@ -106,6 +154,10 @@ export function RecurringManagement() {
               </div>
             </div>
           ))}
+        </div>
+      ) : error ? (
+        <div className="bg-surface border border-border rounded-2xl">
+          <ErrorState onRetry={fetchItems} />
         </div>
       ) : items.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-text-muted gap-3">
@@ -162,6 +214,12 @@ export function RecurringManagement() {
                       <span>يوم {item.dayOfMonth} من كل شهر</span>
                       <span>منذ {formatDate(item.startDate)}</span>
                       {item.endDate && <span>حتى {formatDate(item.endDate)}</span>}
+                      <span>
+                        آخر إنشاء:{" "}
+                        {item.lastGeneratedMonth && item.lastGeneratedYear
+                          ? `${arabicMonths[item.lastGeneratedMonth - 1]} ${item.lastGeneratedYear}`
+                          : "لم يُنشأ بعد"}
+                      </span>
                     </div>
 
                     {item.notes && (
@@ -169,6 +227,13 @@ export function RecurringManagement() {
                     )}
                   </div>
 
+                  <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                  <Link
+                    href={`/admin/recurring/${item.id}/edit`}
+                    className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium border border-border text-text-secondary hover:text-primary hover:border-primary/40 transition-colors"
+                  >
+                    تعديل
+                  </Link>
                   {/* Toggle button */}
                   <button
                     onClick={() => handleToggle(item.id, item.isActive)}
@@ -195,6 +260,7 @@ export function RecurringManagement() {
                     )}
                     {item.isActive ? "تعطيل" : "تفعيل"}
                   </button>
+                  </div>
                 </div>
               </div>
             );

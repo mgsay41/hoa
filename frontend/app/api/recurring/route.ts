@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { getAdminSession, unauthorized } from "@/lib/admin";
+import { logAudit } from "@/lib/audit";
+import { generateRecurring } from "@/lib/recurring";
+import { checkCategoryType } from "@/lib/transaction-filters";
 import { createRecurringSchema } from "@/lib/validations/recurring";
+import { formatAmount } from "@/lib/utils";
 
 export async function GET() {
   try {
@@ -12,19 +16,14 @@ export async function GET() {
 
     return NextResponse.json(recurringItems);
   } catch {
-    return NextResponse.json(
-      { error: "حدث خطأ في الخادم" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "حدث خطأ في الخادم" }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: request.headers });
-    if (!session) {
-      return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-    }
+    const session = await getAdminSession(request.headers);
+    if (!session) return unauthorized();
 
     const body = await request.json();
     const parsed = createRecurringSchema.safeParse(body);
@@ -36,6 +35,10 @@ export async function POST(request: NextRequest) {
     }
 
     const data = parsed.data;
+    const categoryError = await checkCategoryType(data.categoryId, data.type);
+    if (categoryError) {
+      return NextResponse.json({ error: categoryError }, { status: 400 });
+    }
 
     const recurringItem = await prisma.recurringItem.create({
       data: {
@@ -51,69 +54,26 @@ export async function POST(request: NextRequest) {
       include: { category: true },
     });
 
-    const now = new Date();
-    const startDate = new Date(data.startDate);
-    if (startDate <= now) {
-      const currentMonth = now.getMonth() + 1;
-      const currentYear = now.getFullYear();
-      const transactionDate = new Date(
-        currentYear,
-        currentMonth - 1,
-        data.dayOfMonth
-      );
+    await logAudit({
+      action: "CREATE",
+      entity: "RECURRING",
+      entityId: recurringItem.id,
+      summary: `إضافة بند متكرر: ${recurringItem.nameAr} (${formatAmount(recurringItem.amount.toString())} ج.م شهرياً)`,
+      actorEmail: session.user.email,
+    });
 
-      const endDate = data.endDate ? new Date(data.endDate) : null;
-      const withinEndDate = !endDate || transactionDate <= endDate;
+    // Only creates transactions whose day has already arrived — never future-dated ones
+    const { generated } = await generateRecurring({ itemId: recurringItem.id });
 
-      if (withinEndDate && transactionDate.getMonth() + 1 === currentMonth) {
-        await prisma.transaction.create({
-          data: {
-            type: data.type,
-            amount: data.amount,
-            date: transactionDate,
-            descriptionAr: `${data.nameAr} — ${transactionDate.toLocaleDateString("ar-EG", { month: "long", year: "numeric" })}`,
-            categoryId: data.categoryId,
-            paymentMethod: "CASH",
-            recurringItemId: recurringItem.id,
-          },
-        });
-
-        await prisma.recurringItem.update({
-          where: { id: recurringItem.id },
-          data: {
-            lastGeneratedMonth: currentMonth,
-            lastGeneratedYear: currentYear,
-          },
-        });
-      }
-    }
-
-    return NextResponse.json(recurringItem, { status: 201 });
+    return NextResponse.json({ ...recurringItem, generated }, { status: 201 });
   } catch {
-    return NextResponse.json(
-      { error: "حدث خطأ في الخادم" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "حدث خطأ في الخادم" }, { status: 500 });
   }
-}
-
-export async function PUT() {
-  return NextResponse.json(
-    { error: "التعديل غير مسموح — البنود المتكررة غير قابلة للتغيير بعد الإنشاء" },
-    { status: 405 }
-  );
-}
-
-export async function PATCH() {
-  return NextResponse.json(
-    { error: "استخدم مسار التبديل /recurring/[id]/toggle لتفعيل/تعطيل البند" },
-    { status: 405 }
-  );
 }
 
 export async function DELETE() {
   return NextResponse.json(
-    { error: "الحذف غير مسموح — البنود المتكررة غير قابلة للحذف" },
+    { error: "الحذف غير مسموح — يمكن تعطيل البند بدلاً من ذلك" },
     { status: 405 }
   );
 }

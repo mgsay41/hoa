@@ -15,6 +15,9 @@ type CategoryFormProps =
         type: "INCOME" | "EXPENSE";
         icon: string;
         color: string;
+        monthlyBudget: string;
+        /** Type can't change once transactions/recurring items use the category */
+        inUse: boolean;
       };
     };
 
@@ -32,6 +35,8 @@ export function CategoryForm(props: CategoryFormProps) {
   );
   const [icon, setIcon] = useState(isEdit ? props.initialData.icon : "");
   const [color, setColor] = useState(isEdit ? props.initialData.color : "#00C2A8");
+  const [monthlyBudget, setMonthlyBudget] = useState(isEdit ? props.initialData.monthlyBudget : "");
+  const typeLocked = isEdit && props.initialData.inUse;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -42,7 +47,13 @@ export function CategoryForm(props: CategoryFormProps) {
     }
     setIsSubmitting(true);
     try {
-      const body = { nameAr: nameAr.trim(), type, icon: icon || undefined, color: color || undefined };
+      const body = {
+        nameAr: nameAr.trim(),
+        type,
+        icon: icon || undefined,
+        color: color || undefined,
+        monthlyBudget: type === "EXPENSE" ? monthlyBudget.trim() || null : null,
+      };
 
       if (isEdit) {
         const res = await fetch(`/api/categories/${props.initialData.id}`, {
@@ -117,7 +128,8 @@ export function CategoryForm(props: CategoryFormProps) {
               <button
                 type="button"
                 onClick={() => setType("INCOME")}
-                className={`flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all duration-200 border ${
+                disabled={typeLocked}
+                className={`flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all duration-200 border disabled:cursor-not-allowed disabled:opacity-60 ${
                   type === "INCOME"
                     ? "bg-income-bg border-income/40 text-income"
                     : "bg-bg border-border text-text-muted hover:border-income/20 hover:text-income/70"
@@ -132,7 +144,8 @@ export function CategoryForm(props: CategoryFormProps) {
               <button
                 type="button"
                 onClick={() => setType("EXPENSE")}
-                className={`flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all duration-200 border ${
+                disabled={typeLocked}
+                className={`flex items-center justify-center gap-2 py-3 rounded-xl font-medium text-sm transition-all duration-200 border disabled:cursor-not-allowed disabled:opacity-60 ${
                   type === "EXPENSE"
                     ? "bg-expense-bg border-expense/40 text-expense"
                     : "bg-bg border-border text-text-muted hover:border-expense/20 hover:text-expense/70"
@@ -145,7 +158,37 @@ export function CategoryForm(props: CategoryFormProps) {
                 مصروف
               </button>
             </div>
+            {typeLocked && (
+              <p className="text-[11px] text-text-muted mt-1.5">لا يمكن تغيير النوع لأن الفئة مستخدمة في معاملات</p>
+            )}
           </div>
+
+          {/* Monthly budget (expenses only) */}
+          {type === "EXPENSE" && (
+            <div>
+              <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-2.5">
+                الميزانية الشهرية
+                <span className="normal-case font-normal text-text-muted mr-1">(اختياري)</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={monthlyBudget}
+                  onChange={(e) => setMonthlyBudget(e.target.value)}
+                  className={fieldClass}
+                  placeholder="مثال: 2500"
+                />
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-muted text-xs font-medium bg-surface-elevated px-1.5 py-0.5 rounded-md border border-border">
+                  ج.م
+                </span>
+              </div>
+              <p className="text-[11px] text-text-muted mt-1.5">
+                تظهر في لوحة التحكم كنسبة الصرف الفعلي من الميزانية. اتركها فارغة لإلغاء الميزانية.
+              </p>
+            </div>
+          )}
 
           {/* Icon */}
           <div>
@@ -200,7 +243,7 @@ export function CategoryForm(props: CategoryFormProps) {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 mt-1 flex items-center justify-center gap-2 bg-primary text-bg hover:bg-primary-dark disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full py-3.5 rounded-xl font-semibold text-sm transition-all duration-200 mt-1 flex items-center justify-center gap-2 bg-primary text-on-primary hover:bg-primary-dark disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <>

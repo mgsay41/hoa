@@ -1,87 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
-import {
-  createTransactionSchema,
-  getTransactionsQuerySchema,
-} from "@/lib/validations/transaction";
+import { getAdminSession, unauthorized } from "@/lib/admin";
+import { logAudit } from "@/lib/audit";
+import { createTransactionSchema } from "@/lib/validations/transaction";
+import { checkCategoryType, parseTransactionFilters } from "@/lib/transaction-filters";
+import { formatAmount } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const query = Object.fromEntries(searchParams.entries());
-
-    const parsed = getTransactionsQuerySchema.safeParse(query);
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: "معلمات غير صالحة" },
-        { status: 400 }
-      );
+    const filters = parseTransactionFilters(new URL(request.url).searchParams);
+    if (!filters) {
+      return NextResponse.json({ error: "معلمات غير صالحة" }, { status: 400 });
     }
-
-    const {
-      month,
-      year,
-      type,
-      categoryId,
-      page = "1",
-      limit = "20",
-    } = parsed.data;
-
-    const pageNum = parseInt(page);
-    const limitNum = parseInt(limit);
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const where: any = {};
-
-    if (month && year) {
-      const m = parseInt(month);
-      const y = parseInt(year);
-      const startDate = new Date(y, m - 1, 1);
-      const endDate = new Date(y, m, 1);
-      where.date = { gte: startDate, lt: endDate };
-    } else if (year) {
-      const y = parseInt(year);
-      where.date = { gte: new Date(y, 0, 1), lt: new Date(y + 1, 0, 1) };
-    }
-
-    if (type) where.type = type;
-    if (categoryId) where.categoryId = categoryId;
+    const { where, orderBy, page, limit } = filters;
 
     const [transactions, total] = await Promise.all([
       prisma.transaction.findMany({
         where,
-        include: { category: true },
-        orderBy: { date: "desc" },
-        skip: (pageNum - 1) * limitNum,
-        take: limitNum,
+        include: { category: true, unit: { select: { id: true, code: true } } },
+        orderBy,
+        skip: (page - 1) * limit,
+        take: limit,
       }),
       prisma.transaction.count({ where }),
     ]);
 
     return NextResponse.json({
       transactions,
-      pagination: {
-        page: pageNum,
-        limit: limitNum,
-        total,
-        totalPages: Math.ceil(total / limitNum),
-      },
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
   } catch {
-    return NextResponse.json(
-      { error: "حدث خطأ في الخادم" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "حدث خطأ في الخادم" }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth.api.getSession({ headers: request.headers });
-    if (!session) {
-      return NextResponse.json({ error: "غير مصرح" }, { status: 401 });
-    }
+    const session = await getAdminSession(request.headers);
+    if (!session) return unauthorized();
 
     const body = await request.json();
     const parsed = createTransactionSchema.safeParse(body);
@@ -93,6 +49,10 @@ export async function POST(request: NextRequest) {
     }
 
     const data = parsed.data;
+    const categoryError = await checkCategoryType(data.categoryId, data.type);
+    if (categoryError) {
+      return NextResponse.json({ error: categoryError }, { status: 400 });
+    }
 
     const transaction = await prisma.transaction.create({
       data: {
@@ -102,6 +62,10 @@ export async function POST(request: NextRequest) {
         descriptionAr: data.descriptionAr,
         categoryId: data.categoryId,
         paymentMethod: data.paymentMethod,
+        fund: data.fund ?? "OPERATING",
+        unitId: data.unitId || null,
+        periodMonth: data.unitId ? (data.periodMonth ?? null) : null,
+        periodYear: data.unitId ? (data.periodYear ?? null) : null,
         attachmentUrl: data.attachmentUrl || null,
         attachmentType: data.attachmentType || null,
         notes: data.notes || null,
@@ -109,11 +73,16 @@ export async function POST(request: NextRequest) {
       include: { category: true },
     });
 
+    await logAudit({
+      action: "CREATE",
+      entity: "TRANSACTION",
+      entityId: transaction.id,
+      summary: `إضافة ${transaction.type === "INCOME" ? "إيراد" : "مصروف"}: ${transaction.descriptionAr} (${formatAmount(transaction.amount.toString())} ج.م)`,
+      actorEmail: session.user.email,
+    });
+
     return NextResponse.json(transaction, { status: 201 });
   } catch {
-    return NextResponse.json(
-      { error: "حدث خطأ في الخادم" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "حدث خطأ في الخادم" }, { status: 500 });
   }
 }

@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "@/lib/auth-client";
+import { ThemeToggle } from "@/components/theme";
 
 const adminLinks: {
   href: string;
   label: string;
+  /** Full label for the desktop sidebar (falls back to label) */
+  longLabel?: string;
   hideOnMobile?: boolean;
   icon: (active: boolean) => React.ReactNode;
 }[] = [
@@ -25,6 +28,7 @@ const adminLinks: {
   {
     href: "/admin/transactions",
     label: "المعاملات",
+    longLabel: "سجل المعاملات",
     hideOnMobile: true,
     icon: (active: boolean) => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
@@ -40,6 +44,7 @@ const adminLinks: {
   {
     href: "/admin/transactions/new",
     label: "إضافة",
+    longLabel: "إضافة معاملة",
     icon: (active: boolean) => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="9" fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.15 : 0} />
@@ -49,8 +54,48 @@ const adminLinks: {
     ),
   },
   {
+    href: "/admin/units",
+    label: "الوحدات",
+    longLabel: "الوحدات والملاك",
+    hideOnMobile: true,
+    icon: (active: boolean) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="2" width="16" height="20" rx="2" fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.15 : 0} />
+        <line x1="9" y1="6" x2="9.01" y2="6" />
+        <line x1="15" y1="6" x2="15.01" y2="6" />
+        <line x1="9" y1="10" x2="9.01" y2="10" />
+        <line x1="15" y1="10" x2="15.01" y2="10" />
+        <path d="M10 22v-4h4v4" />
+      </svg>
+    ),
+  },
+  {
+    href: "/admin/units/collect",
+    label: "التحصيل",
+    longLabel: "تحصيل الاشتراكات",
+    icon: (active: boolean) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="5" width="20" height="14" rx="2" fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.15 : 0} />
+        <line x1="2" y1="10" x2="22" y2="10" />
+        <polyline points="9 15 11 17 15 13" />
+      </svg>
+    ),
+  },
+  {
+    href: "/admin/reserve",
+    label: "الطوارئ",
+    longLabel: "صندوق الطوارئ",
+    hideOnMobile: true,
+    icon: (active: boolean) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.15 : 0} />
+      </svg>
+    ),
+  },
+  {
     href: "/admin/categories",
     label: "الفئات",
+    longLabel: "الفئات والميزانيات",
     hideOnMobile: true,
     icon: (active: boolean) => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
@@ -76,6 +121,8 @@ const adminLinks: {
   {
     href: "/admin/recurring/new",
     label: "بند جديد",
+    longLabel: "إضافة بند متكرر",
+    hideOnMobile: true,
     icon: (active: boolean) => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 13v2a4 4 0 0 1-4 4H3" />
@@ -88,9 +135,17 @@ const adminLinks: {
   },
 ];
 
+/** Longest matching link wins, so /admin/units/collect doesn't also light up /admin/units. */
+function activeHref(pathname: string) {
+  return adminLinks
+    .filter((l) => pathname === l.href || pathname.startsWith(`${l.href}/`))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const current = activeHref(pathname);
 
   async function handleLogout() {
     await signOut();
@@ -120,11 +175,12 @@ export function Sidebar() {
         <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5 overflow-y-auto">
           <p className="text-[10px] font-semibold text-text-muted uppercase tracking-widest px-3 mb-2">القائمة</p>
           {adminLinks.map((link) => {
-            const active = pathname === link.href;
+            const active = current === link.href;
             return (
               <Link
                 key={link.href}
                 href={link.href}
+                aria-current={active ? "page" : undefined}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
                   active
                     ? "bg-primary/10 text-primary"
@@ -134,7 +190,7 @@ export function Sidebar() {
                 <span className={active ? "text-primary" : "text-text-muted"}>
                   {link.icon(active)}
                 </span>
-                <span>{link.label === "إضافة" ? "إضافة معاملة" : link.label === "بند جديد" ? "إضافة بند متكرر" : link.label === "المعاملات" ? "سجل المعاملات" : link.label === "الفئات" ? "إدارة الفئات" : link.label}</span>
+                <span>{link.longLabel ?? link.label}</span>
                 {active && <span className="mr-auto w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
               </Link>
             );
@@ -143,6 +199,10 @@ export function Sidebar() {
 
         {/* Bottom */}
         <div className="px-3 py-4 border-t border-border flex flex-col gap-0.5">
+          <div className="flex items-center justify-between px-3 py-1.5 text-sm text-text-muted">
+            المظهر
+            <ThemeToggle />
+          </div>
           <Link
             href="/"
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-text-muted hover:text-text-secondary hover:bg-surface-elevated transition-colors"
@@ -170,7 +230,7 @@ export function Sidebar() {
       <nav className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-surface/95 backdrop-blur-xl border-t border-border">
         <div className="flex items-stretch h-16">
           {adminLinks.filter((l) => !l.hideOnMobile).map((link) => {
-            const active = pathname === link.href;
+            const active = current === link.href;
             return (
               <Link
                 key={link.href}

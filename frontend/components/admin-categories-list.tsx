@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/toast";
+import { useConfirm } from "@/components/confirm-dialog";
+import { formatAmount } from "@/lib/utils";
 
 type CategoryWithCount = {
   id: string;
@@ -10,6 +12,7 @@ type CategoryWithCount = {
   type: "INCOME" | "EXPENSE";
   icon: string | null;
   color: string | null;
+  monthlyBudget: string | null;
   _count: {
     transactions: number;
     recurring: number;
@@ -22,14 +25,22 @@ interface AdminCategoriesListProps {
 
 export function AdminCategoriesList({ categories: initialCategories }: AdminCategoriesListProps) {
   const { toast } = useToast();
+  const confirm = useConfirm();
   const [categories, setCategories] = useState(initialCategories);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const incomeCategories = categories.filter((c) => c.type === "INCOME");
   const expenseCategories = categories.filter((c) => c.type === "EXPENSE");
 
-  async function handleDelete(id: string) {
-    if (!window.confirm("هل أنت متأكد من حذف هذه الفئة؟")) return;
+  async function handleDelete(cat: CategoryWithCount) {
+    const ok = await confirm({
+      title: `حذف فئة «${cat.nameAr}»؟`,
+      message: "لا يمكن التراجع عن الحذف.",
+      confirmLabel: "حذف",
+      danger: true,
+    });
+    if (!ok) return;
+    const id = cat.id;
     setDeletingId(id);
     try {
       const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
@@ -75,7 +86,11 @@ export function AdminCategoriesList({ categories: initialCategories }: AdminCate
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-text-primary">{cat.nameAr}</p>
                     <p className="text-xs text-text-muted">
-                      {cat._count.transactions + cat._count.recurring} معاملة
+                      {cat._count.transactions} معاملة
+                      {cat._count.recurring > 0 && ` • ${cat._count.recurring} بند متكرر`}
+                      {cat.monthlyBudget && (
+                        <span className="text-primary"> • ميزانية {formatAmount(cat.monthlyBudget)} ج.م/شهر</span>
+                      )}
                     </p>
                   </div>
 
@@ -89,6 +104,7 @@ export function AdminCategoriesList({ categories: initialCategories }: AdminCate
                   <div className="flex items-center gap-2">
                     <Link
                       href={`/admin/categories/${cat.id}/edit`}
+                      aria-label={`تعديل ${cat.nameAr}`}
                       className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-muted hover:text-primary hover:bg-primary/10 transition-colors"
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -97,9 +113,11 @@ export function AdminCategoriesList({ categories: initialCategories }: AdminCate
                       </svg>
                     </Link>
                     <button
-                      onClick={() => handleDelete(cat.id)}
-                      disabled={deletingId === cat.id}
-                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-muted hover:text-expense hover:bg-expense-bg transition-colors disabled:opacity-50"
+                      onClick={() => handleDelete(cat)}
+                      disabled={deletingId === cat.id || cat._count.transactions + cat._count.recurring > 0}
+                      aria-label={`حذف ${cat.nameAr}`}
+                      title={cat._count.transactions + cat._count.recurring > 0 ? "الفئة مستخدمة — لا يمكن حذفها" : "حذف"}
+                      className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-text-muted hover:text-expense hover:bg-expense-bg transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                     >
                       {deletingId === cat.id ? (
                         <svg className="spin" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -125,10 +143,13 @@ export function AdminCategoriesList({ categories: initialCategories }: AdminCate
   return (
     <div className="fade-in">
       <div className="flex items-center justify-between mb-5">
-        <h1 className="text-xl font-bold text-text-primary">إدارة الفئات</h1>
+        <div>
+          <h1 className="text-xl font-bold text-text-primary">الفئات والميزانيات</h1>
+          <p className="text-xs text-text-muted mt-0.5">حدد ميزانية شهرية لفئات المصروفات لمتابعتها في لوحة التحكم</p>
+        </div>
         <Link
           href="/admin/categories/new"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-primary text-bg hover:bg-primary-dark transition-colors"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-primary text-on-primary hover:bg-primary-dark transition-colors"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <line x1="12" y1="5" x2="12" y2="19" />

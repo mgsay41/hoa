@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { formatAmount, formatDate } from "@/lib/utils";
+import { ErrorState } from "@/components/states";
 
 type Category = {
   id: string;
@@ -28,14 +29,38 @@ type RecurringItem = {
 export function RecurringList() {
   const [items, setItems] = useState<RecurringItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const fetchItems = useCallback(async () => {
+    try {
+      const res = await fetch("/api/recurring");
+      if (!res.ok) throw new Error();
+      setItems(await res.json());
+      setError(false);
+    } catch {
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const retry = () => {
+    setLoading(true);
+    setError(false);
+    fetchItems();
+  };
 
   useEffect(() => {
-    fetch("/api/recurring")
-      .then((res) => res.json())
-      .then((data) => setItems(data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, []);
+    fetchItems();
+  }, [fetchItems]);
+
+  if (error) {
+    return (
+      <div className="fade-in bg-surface border border-border rounded-2xl">
+        <ErrorState message="تعذر تحميل البنود المتكررة" onRetry={retry} />
+      </div>
+    );
+  }
 
   if (loading) {
     return (

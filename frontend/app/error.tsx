@@ -18,7 +18,7 @@ export default function GlobalError({
         </p>
         <button
           onClick={reset}
-          className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-bg rounded-xl font-semibold text-sm hover:bg-primary-dark transition-all duration-200"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-xl font-semibold text-sm hover:bg-primary-dark transition-all duration-200"
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
             <polyline points="23 4 23 10 17 10" />

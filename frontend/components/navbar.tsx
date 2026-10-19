@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ThemeToggle } from "@/components/theme";
 
 const navLinks = [
   {
@@ -23,6 +24,22 @@ const navLinks = [
         <line x1="3" y1="5.5" x2="21" y2="5.5" />
         <line x1="3" y1="12" x2="21" y2="12" />
         <line x1="3" y1="18" x2="15" y2="18" />
+      </svg>
+    ),
+  },
+  {
+    href: "/units",
+    label: "الوحدات",
+    icon: (active: boolean) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+        <rect x="4" y="2" width="16" height="20" rx="2" fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.15 : 0} />
+        <line x1="9" y1="6" x2="9.01" y2="6" />
+        <line x1="15" y1="6" x2="15.01" y2="6" />
+        <line x1="9" y1="10" x2="9.01" y2="10" />
+        <line x1="15" y1="10" x2="15.01" y2="10" />
+        <line x1="9" y1="14" x2="9.01" y2="14" />
+        <line x1="15" y1="14" x2="15.01" y2="14" />
+        <path d="M10 22v-4h4v4" />
       </svg>
     ),
   },
@@ -50,7 +67,21 @@ const navLinks = [
       </svg>
     ),
   },
+  {
+    href: "/audit",
+    label: "السجل",
+    icon: (active: boolean) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="9" fill={active ? "currentColor" : "none"} fillOpacity={active ? 0.15 : 0} />
+        <polyline points="12 7 12 12 15 14" />
+      </svg>
+    ),
+  },
 ];
+
+function isActive(pathname: string, href: string) {
+  return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function Navbar() {
   const pathname = usePathname();
@@ -75,12 +106,13 @@ export function Navbar() {
             {/* Desktop nav links */}
             <nav className="hidden md:flex items-center gap-1">
               {navLinks.map((link) => {
-                const active = pathname === link.href;
+                const active = isActive(pathname, link.href);
                 return (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                    aria-current={active ? "page" : undefined}
+                    className={`px-3 lg:px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
                       active
                         ? "bg-primary/10 text-primary"
                         : "text-text-secondary hover:text-text-primary hover:bg-surface-elevated"
@@ -92,6 +124,8 @@ export function Navbar() {
               })}
             </nav>
 
+            <div className="flex items-center gap-1">
+            <ThemeToggle />
             <Link
               href="/admin/login"
               className="flex items-center gap-1.5 text-xs text-text-muted hover:text-primary transition-colors px-3 py-2 rounded-lg hover:bg-primary/5"
@@ -102,6 +136,7 @@ export function Navbar() {
               </svg>
               <span className="hidden sm:inline">دخول الإدارة</span>
             </Link>
+            </div>
           </div>
         </div>
       </header>
@@ -110,12 +145,13 @@ export function Navbar() {
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-surface/95 backdrop-blur-xl border-t border-border safe-area-pb">
         <div className="flex items-stretch h-16">
           {navLinks.map((link) => {
-            const active = pathname === link.href;
+            const active = isActive(pathname, link.href);
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`flex-1 flex flex-col items-center justify-center gap-1 transition-all duration-200 ${
+                aria-current={active ? "page" : undefined}
+                className={`relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 transition-all duration-200 ${
                   active ? "text-primary" : "text-text-muted"
                 }`}
               >

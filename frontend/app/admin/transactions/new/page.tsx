@@ -1,16 +1,26 @@
 import { prisma } from "@/lib/prisma";
 import { TransactionForm } from "@/components/transaction-form";
 
-export default async function NewTransactionPage() {
-  const categories = await prisma.category.findMany({
-    select: {
-      id: true,
-      nameAr: true,
-      type: true,
-      icon: true,
-    },
-    orderBy: { nameAr: "asc" },
-  });
+// Reads categories from the database — must not be frozen at build time
+export const dynamic = "force-dynamic";
 
-  return <TransactionForm categories={categories} />;
+export default async function NewTransactionPage() {
+  const [categories, units] = await Promise.all([
+    prisma.category.findMany({
+      select: { id: true, nameAr: true, type: true, icon: true },
+      orderBy: { nameAr: "asc" },
+    }),
+    prisma.unit.findMany({
+      where: { isActive: true },
+      select: { id: true, code: true, monthlyFee: true },
+      orderBy: [{ floor: "asc" }, { code: "asc" }],
+    }),
+  ]);
+
+  return (
+    <TransactionForm
+      categories={categories}
+      units={units.map((u) => ({ ...u, monthlyFee: u.monthlyFee.toString() }))}
+    />
+  );
 }
