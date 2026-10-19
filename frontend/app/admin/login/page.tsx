@@ -3,11 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signIn } from "@/lib/auth-client";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -17,13 +16,24 @@ export default function AdminLoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const { error: signInError } = await signIn.email({ email, password, rememberMe: true });
-    if (signInError) {
-      setError("البريد الإلكتروني أو كلمة المرور غير صحيحة");
+    try {
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(res.status === 429 ? data.error : "اسم المستخدم أو كلمة المرور غير صحيحة");
+        setLoading(false);
+        return;
+      }
+      router.push("/admin/dashboard");
+      router.refresh();
+    } catch {
+      setError("تعذر الاتصال بالخادم");
       setLoading(false);
-      return;
     }
-    router.push("/admin/dashboard");
   }
 
   return (
@@ -54,25 +64,28 @@ export default function AdminLoginPage() {
             {/* Email */}
             <div>
               <label className="block text-xs font-semibold text-text-muted uppercase tracking-wider mb-2">
-                البريد الإلكتروني
+                اسم المستخدم
               </label>
               <div className="relative">
                 <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
                   required
-                  autoComplete="email"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  dir="ltr"
                   className="w-full pr-4 pl-10 py-3 rounded-xl bg-bg border border-border text-text-primary placeholder:text-text-muted text-sm focus:ring-2 focus:ring-primary/40 focus:border-primary outline-none transition"
-                  placeholder="admin@burjalwaleed.com"
+                  placeholder="admin"
                 />
                 <svg
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted"
                   width="15" height="15" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" strokeWidth="2" strokeLinecap="round"
                 >
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                  <polyline points="22,6 12,13 2,6" />
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
                 </svg>
               </div>
             </div>

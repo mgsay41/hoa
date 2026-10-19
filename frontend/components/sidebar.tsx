@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { signOut } from "@/lib/auth-client";
 import { ThemeToggle } from "@/components/theme";
 
 const adminLinks: {
@@ -148,7 +147,7 @@ export function Sidebar() {
   const current = activeHref(pathname);
 
   async function handleLogout() {
-    await signOut();
+    await fetch("/api/admin/logout", { method: "POST" }).catch(() => {});
     router.push("/admin/login");
   }
 

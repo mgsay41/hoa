@@ -1,16 +1,14 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { SESSION_COOKIE, readCookie, verifySessionToken } from "@/lib/session";
 
 /**
- * Returns the session only when it belongs to the configured admin.
- * Every mutating API route must go through this — a valid session alone is not enough.
+ * Returns the admin session when the request carries a valid admin cookie, otherwise null.
+ * Every mutating API route must go through this.
  */
 export async function getAdminSession(headers: Headers) {
-  const session = await auth.api.getSession({ headers });
-  if (!session) return null;
-  const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
-  if (adminEmail && session.user.email.toLowerCase() !== adminEmail) return null;
-  return session;
+  const username = verifySessionToken(readCookie(headers, SESSION_COOKIE));
+  // `email` is what the audit log stores as the actor; it holds the admin username
+  return username ? { user: { email: username } } : null;
 }
 
 export function unauthorized() {

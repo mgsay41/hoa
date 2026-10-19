@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "@/components/sidebar";
-import { signOut } from "@/lib/auth-client";
 import { ThemeToggle } from "@/components/theme";
 
 export default function AdminLayout({
@@ -19,7 +18,7 @@ export default function AdminLayout({
   }
 
   async function handleLogout() {
-    await signOut();
+    await fetch("/api/admin/logout", { method: "POST" }).catch(() => {});
     router.push("/admin/login");
   }
 

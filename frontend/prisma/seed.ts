@@ -3,7 +3,6 @@ import { PrismaClient, type Prisma } from "../app/generated/prisma/client";
 import { PaymentMethod, TransactionType } from "../app/generated/prisma/enums";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
-import { auth } from "../lib/auth";
 import { arabicMonths } from "../lib/utils";
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
@@ -191,19 +190,7 @@ async function main() {
   });
   console.log("✅ Categories");
 
-  // 2. Admin user (only ADMIN_EMAIL is allowed to sign up — see lib/auth.ts)
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const adminPassword = process.env.ADMIN_PASSWORD;
-  if (!adminEmail || !adminPassword) {
-    console.warn("⚠️  ADMIN_EMAIL or ADMIN_PASSWORD not set, skipping admin user");
-  } else if (await prisma.user.findUnique({ where: { email: adminEmail } })) {
-    console.log("ℹ️  Admin user already exists");
-  } else {
-    await auth.api.signUpEmail({ body: { name: "المشرف", email: adminEmail, password: adminPassword } });
-    console.log("✅ Admin user");
-  }
-
-  // 3. Units
+  // 2. Units
   await prisma.unit.createMany({
     data: units.map((u) => ({
       id: u.id,
@@ -217,7 +204,7 @@ async function main() {
   });
   console.log(`✅ ${units.length} units`);
 
-  // 4. Recurring items
+  // 3. Recurring items
   await prisma.recurringItem.createMany({
     data: [
       ...recurringItems.map((r) => ({
@@ -251,10 +238,10 @@ async function main() {
   });
   console.log("✅ Recurring items");
 
-  // 5. Transactions
+  // 4. Transactions
   const rows: Prisma.TransactionCreateManyInput[] = [];
 
-  // 5a. Generated recurring transactions (one per item per month, like lib/recurring.ts creates them)
+  // 4a. Generated recurring transactions (one per item per month, like lib/recurring.ts creates them)
   for (const { year, month } of SEED_MONTHS) {
     const k = key(year, month);
     for (const r of recurringItems) {
@@ -292,7 +279,7 @@ async function main() {
     }
   }
 
-  // 5b. Unit dues
+  // 4b. Unit dues
   for (const { year, month } of SEED_MONTHS) {
     for (const u of units) {
       const payment = duesPayment(u.code, u.monthlyFee, year, month);
@@ -313,7 +300,7 @@ async function main() {
     }
   }
 
-  // 5c. One-offs
+  // 4c. One-offs
   for (const t of oneOffs) {
     rows.push({ ...t, amount: t.amount.toFixed(2), fund: t.fund ?? "OPERATING" });
   }
@@ -321,7 +308,7 @@ async function main() {
   await prisma.transaction.createMany({ data: rows, skipDuplicates: true });
   console.log(`✅ ${rows.length} transactions`);
 
-  // 6. Reserve fund: opening balance + 1,000 every month
+  // 5. Reserve fund: opening balance + 1,000 every month
   await prisma.fundTransfer.createMany({
     data: [
       { id: "ft-opening", direction: "TO_RESERVE", amount: "5000.00", date: utc(2025, 11, 2), notes: "رصيد افتتاحي لصندوق الطوارئ" },
@@ -337,7 +324,7 @@ async function main() {
   });
   console.log("✅ Reserve fund transfers");
 
-  // 7. A few audit entries so the public change log isn't empty
+  // 6. A few audit entries so the public change log isn't empty
   await prisma.auditLog.createMany({
     data: [
       {

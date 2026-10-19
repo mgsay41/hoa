@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { SESSION_COOKIE, verifySessionToken } from "@/lib/session";
 
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 const WINDOW_MS = 60_000;
@@ -26,12 +27,9 @@ function isRateLimited(ip: string): boolean {
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Every write to the API (except Better Auth, which has its own limiter) is rate limited
+  // Every write to the API — including the login endpoint — is rate limited per IP
   const isAdminApi =
-    pathname.startsWith("/api/") &&
-    !pathname.startsWith("/api/auth") &&
-    request.method !== "GET" &&
-    request.method !== "HEAD";
+    pathname.startsWith("/api/") && request.method !== "GET" && request.method !== "HEAD";
 
   if (isAdminApi) {
     const ip = getClientIp(request);
@@ -44,10 +42,8 @@ export function proxy(request: NextRequest) {
   }
 
   if (pathname.startsWith("/admin") && !pathname.startsWith("/admin/login")) {
-    const sessionCookie =
-      request.cookies.get("better-auth.session_token") ||
-      request.cookies.get("__Secure-better-auth.session_token");
-    if (!sessionCookie) {
+    // Proxy runs on the Node.js runtime, so the signed session can be fully verified here
+    if (!verifySessionToken(request.cookies.get(SESSION_COOKIE)?.value)) {
       return NextResponse.redirect(new URL("/admin/login", request.url));
     }
   }
